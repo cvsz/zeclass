@@ -264,7 +264,7 @@
                     SelectedIndex="0" Cursor="Hand" SelectionChanged="OnThemeChanged"
                     AutomationProperties.Name="Board theme" />
           <TextBlock Text="Language" Style="{StaticResource ChromeLabel}" Margin="4,4,0,0" />
-          <ComboBox x:Name="LanguageBox" Style="{StaticResource PaletteCombo}" Width="56"
+          <ComboBox x:Name="LanguageBox" Style="{StaticResource PaletteCombo}" Width="104"
                     SelectedIndex="0" Cursor="Hand" SelectionChanged="OnLanguageChanged"
                     AutomationProperties.Name="Interface language" />
         </StackPanel>

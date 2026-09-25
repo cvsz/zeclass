@@ -71,8 +71,8 @@ Calculator, ruler, compass, set square, protractor, table sheet: all done.
 | Print | done, via the shell print verb on a staged PDF |
 | Email the board as a package | done, zips the board and opens a draft |
 | Local resources and built-in library browser | not done |
-| Localization | done: resource system with per-key English fallback; en, de, fr, it shipped |
-| 20 languages | not done: the manual's claim is not met by the three shipped |
+| Localization | done: 24 languages, per-key English fallback, native names, RTL mirroring for ar/he, and a build-time audit that fails on missing keys, dropped `{0}` placeholders, or an untranslated copy of English. See `LOCALIZATION.md` |
+| 20 languages | interface strings covered; help text and the acceptance prompts are still English-only, and no catalogue has native-speaker review |
 
 ## Phase 7: production hardening
 

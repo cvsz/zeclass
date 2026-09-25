@@ -43,6 +43,10 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
 **Presentation**
 - Three themes: light, dark, and a high-contrast theme for projectors and low-vision use. The
   default follows the OS accessibility setting rather than a hardcoded light theme.
+- 24 interface languages. The picker shows each language in its own script (`Deutsch`, `日本語`,
+  `العربية`), and switching to Arabic or Hebrew mirrors the whole window rather than leaving a
+  half-flipped layout. Untranslated keys fall back to English one word at a time, so a partial
+  translation degrades instead of blanking.
 
 **Hardware**
 - USB digitizer discovery with VID/PID, and a diagnostics panel plus a saveable report.
@@ -71,9 +75,9 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
       ColorPickerWindow.cs      colour picker
       MainWindow.xaml(.cs)      chrome, tool palette, file handling, wiring
       CrashLog.cs               rotating log and diagnostics export
-    tests/EBoard.Tests/         xUnit tests, 205 passing
+    tests/EBoard.Tests/         xUnit tests, 376 passing
     tools/IconGen/              build-time icon generator (not shipped)
-    docs/                       hardware notes, extracted vendor spec, roadmap
+    docs/                       hardware notes, extracted vendor spec, roadmap, localization
     build/publish.ps1           per-runtime self-contained publish with checksums
     build/install.ps1           per-user installer with a digitizer precheck
 
@@ -107,7 +111,7 @@ It is wired in two places, because they need different mechanisms:
     powershell -ExecutionPolicy Bypass -File build\publish.ps1
     powershell -ExecutionPolicy Bypass -File build\install.ps1
 
-Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 205 tests
+Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 376 tests
 passing. The self-contained win-x64 publish launches cleanly, and `install.ps1` has been run
 end to end against a real per-user install directory, including the digitizer precheck and a
 start-and-close verification.
@@ -159,16 +163,23 @@ active. The Diagnostics panel reports which one is in use.
 These are real gaps, not oversights:
 
 - **No real-hardware verification yet.** Calibration, pen pressure, multi-touch and the gestures
-  have not been exercised against an actual panel. This is the largest remaining risk. The
-  digitizer precheck in `install.ps1` also reports nothing on a machine with no panel attached,
-  which is the state it was last tested in.
+  have not been exercised against an actual panel. This is the largest remaining risk. The app
+  ships a guided **Acceptance test** that produces an auditable report for exactly this, but it
+  needs a machine with the panel attached; see `docs\HARDWARE.md`.
 - **PDF, Word and PPT import is partial.** PDFs are read for embedded page images, so a
   vector-only PDF reports that it cannot be imported. Office formats are read for their embedded
   preview and media, not reflowed: real layout needs a rendering approach that survives
   locked-down school images, which rules out office automation.
-- **Four languages, not twenty.** en, de, fr and it ship; the vendor manual claims 20. The
-  resource system falls back to English per key, so a partial translation degrades rather than
-  breaking.
+- **The translations need a native speaker.** 24 languages ship, but they were produced without
+  review by a speaker of each. The wording is plausible and the audit proves nothing is missing or
+  broken, but plausibility is not fluency: a teacher in front of a class will notice a term that is
+  technically right and not idiomatic. Treat them as a reviewed-once-needed starting point, and get
+  them checked before classroom deployment. Adding or fixing a language is a JSON edit in
+  `src\EBoard\lang` plus an entry in `LanguageCatalog`.
+- **Only the toolbar and action strings are translated.** The catalogue covers roughly 48 keys: tool
+  names, actions, status text and the calibration messages. Help text, the acceptance-test prompts
+  and the diagnostics report are English-only. A full translation is a much larger job than the
+  file count suggests.
 - **No video player or audio tools.** The vendor's packaged build depends on DirectShow-era
   components that will not run on a current Windows image.
 - **No audio recorder**, and the screen recorder has no retention policy. It writes uncompressed

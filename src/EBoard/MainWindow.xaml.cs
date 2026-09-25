@@ -69,24 +69,14 @@ public partial class MainWindow : Window
         try
         {
             Locator.Current.LoadFromDisk();
-            foreach (var code in Locator.Current.AvailableLanguages)
-            {
-                LanguageBox.Items.Add(code);
-            }
-
-            LanguageBox.SelectedItem = Locator.Current.Language;
-            if (LanguageBox.SelectedItem is null)
-            {
-                LanguageBox.SelectedIndex = 0;
-            }
+            PopulateLanguageBox();
         }
         finally
         {
             _initializingPickers = false;
         }
 
-        Locator.Current.SetLanguage((LanguageBox.SelectedItem as string) ?? "en");
-        _document.Language = Locator.Current.Language;
+        ApplyLanguage(LanguageBox.SelectedItem is LanguageInfo info ? info.Code : "en");
         CrashLog.Info($"Language: {Locator.Current.Language} " +
                       $"({Locator.Current.AvailableLanguages.Count} available)");
         RefreshLocalizedText();
@@ -1272,6 +1262,66 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Fills the language picker with native names, ordered so English comes first and the rest
+    /// follow the catalogue order. Codes are shown alongside because two users may genuinely
+    /// want different variants, and "Deutsch" alone does not tell you which file was loaded.
+    /// </summary>
+    private void PopulateLanguageBox()
+    {
+        LanguageBox.Items.Clear();
+        foreach (var info in LanguageCatalog.All)
+        {
+            if (!Locator.Current.AvailableLanguages.Contains(info.Code, StringComparer.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            LanguageBox.Items.Add(info);
+        }
+
+        // A catalogue file can exist for a language the static table does not know about, for
+        // example one dropped in by hand. Offer it rather than silently hiding it.
+        foreach (var code in Locator.Current.AvailableLanguages)
+        {
+            if (LanguageCatalog.Find(code) is null)
+            {
+                LanguageBox.Items.Add(new LanguageInfo(code, code, code, false));
+            }
+        }
+
+        var current = LanguageBox.Items
+            .OfType<LanguageInfo>()
+            .FirstOrDefault(i => string.Equals(i.Code, Locator.Current.Language,
+                StringComparison.OrdinalIgnoreCase))
+            ?? LanguageBox.Items.OfType<LanguageInfo>().FirstOrDefault();
+
+        LanguageBox.SelectedItem = current;
+        if (current is not null)
+        {
+            LanguageBox.ToolTip = $"{current.EnglishName} ({current.Code})";
+        }
+    }
+
+    /// <summary>
+    /// Applies a language, including mirroring the whole window for a right-to-left script.
+    /// Half-mirrored is worse than untranslated, so the direction is part of applying a language
+    /// rather than an afterthought.
+    /// </summary>
+    private void ApplyLanguage(string code)
+    {
+        if (!Locator.Current.SetLanguage(code))
+        {
+            return;
+        }
+
+        _document.Language = Locator.Current.Language;
+        FlowDirection = LanguageCatalog.IsRightToLeft(Locator.Current.Language)
+            ? FlowDirection.RightToLeft
+            : FlowDirection.LeftToRight;
+        RefreshLocalizedText();
+    }
+
     private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_initializingPickers)
@@ -1279,15 +1329,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (LanguageBox.SelectedItem is not string code)
+        if (LanguageBox.SelectedItem is LanguageInfo info)
         {
-            return;
-        }
-
-        if (Locator.Current.SetLanguage(code))
-        {
-            _document.Language = code;
-            RefreshLocalizedText();
+            LanguageBox.ToolTip = $"{info.EnglishName} ({info.Code})";
+            ApplyLanguage(info.Code);
         }
     }
 

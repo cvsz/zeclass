@@ -190,7 +190,7 @@ public sealed class LocatorTests : IDisposable
     }
 
     [Fact]
-    public void ShippedLanguagesDifferFromEnglishWhereTranslated()
+    public void ShippedLanguagesLoadAndDifferFromEnglishWhereTranslated()
     {
         var shipped = Path.Combine(AppContext.BaseDirectory, "lang");
         if (!Directory.Exists(shipped))
@@ -208,8 +208,19 @@ public sealed class LocatorTests : IDisposable
 
         foreach (var code in others)
         {
-            locator.SetLanguage(code);
-            Assert.NotEqual("Pen", locator.Strings["tool.pen"]);
+            Assert.True(locator.SetLanguage(code), $"{code} could not be selected");
+
+            // A language is only meaningfully different if most of it differs. The previous check
+            // was a single key, which passed by luck with three catalogues and broke the moment a
+            // language where that word is genuinely the same was added.
+            var identical = Locator.BuiltInEnglish.Keys
+                .Count(k => string.Equals(Locator.BuiltInEnglish[k], locator.Strings[k],
+                    StringComparison.Ordinal));
+
+            var share = (double)identical / Locator.BuiltInEnglish.Count;
+            Assert.True(share < 0.25,
+                $"{code} has {identical}/{Locator.BuiltInEnglish.Count} strings identical to " +
+                "English, which suggests it was copied rather than translated");
         }
     }
 

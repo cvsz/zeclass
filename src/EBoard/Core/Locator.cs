@@ -54,6 +54,223 @@ public sealed class Strings
 /// is needed to add a language: a missing key falls back to English, so a partial translation
 /// degrades word by word rather than showing raw keys across the interface.
 /// </summary>
+/// <summary>
+/// A language the app can offer, with the metadata the UI needs beyond the code itself.
+/// </summary>
+public sealed record LanguageInfo(string Code, string EnglishName, string NativeName,
+    bool RightToLeft);
+
+/// <summary>
+/// The languages the app knows about, beyond the <c>lang\*.json</c> files on disk.
+///
+/// Two reasons this is a static table rather than derived from the files: the picker should show
+/// "Deutsch" and not "de", and a file being present is not the same as a language being
+/// <em>ready</em>. Shipping Arabic or Hebrew means mirroring the layout, so those are flagged
+/// right-to-left and the window flips rather than leaving a broken mirrored-in-half UI.
+/// </summary>
+public static class LanguageCatalog
+{
+    public static readonly IReadOnlyList<LanguageInfo> All =
+    [
+        new("en", "English", "English", false),
+        new("de", "German", "Deutsch", false),
+        new("fr", "French", "Français", false),
+        new("it", "Italian", "Italiano", false),
+        new("es", "Spanish", "Español", false),
+        new("pt", "Portuguese", "Português", false),
+        new("nl", "Dutch", "Nederlands", false),
+        new("pl", "Polish", "Polski", false),
+        new("cs", "Czech", "Čeština", false),
+        new("sv", "Swedish", "Svenska", false),
+        new("da", "Danish", "Dansk", false),
+        new("nb", "Norwegian", "Norsk", false),
+        new("fi", "Finnish", "Suomi", false),
+        new("tr", "Turkish", "Türkçe", false),
+        new("el", "Greek", "Ελληνικά", false),
+        new("ro", "Romanian", "Română", false),
+        new("hu", "Hungarian", "Magyar", false),
+        new("ru", "Russian", "Русский", false),
+        new("uk", "Ukrainian", "Українська", false),
+        new("ar", "Arabic", "العربية", true),
+        new("he", "Hebrew", "עברית", true),
+        new("zh-Hans", "Chinese (Simplified)", "简体中文", false),
+        new("ja", "Japanese", "日本語", false),
+        new("ko", "Korean", "한국어", false),
+    ];
+
+    public static LanguageInfo? Find(string code) =>
+        All.FirstOrDefault(l => string.Equals(l.Code, code, StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsRightToLeft(string code) => Find(code)?.RightToLeft ?? false;
+
+    /// <summary>
+    /// Resolves a user or OS language to a code we actually ship, for example <c>pt-BR</c> to
+    /// <c>pt</c> and <c>zh-TW</c> to <c>zh-Hans</c> if that is what we have. Returns null when
+    /// there is no match, so the caller can fall back to English rather than to a wrong language.
+    /// </summary>
+    public static string? Resolve(string? requested)
+    {
+        if (string.IsNullOrWhiteSpace(requested))
+        {
+            return null;
+        }
+
+        var code = requested.Trim();
+        if (Find(code) is { } exact)
+        {
+            // Return the canonical code, not what was asked for: "DE" would otherwise become the
+            // active language, and the picker and the document would then disagree with the file
+            // that was actually loaded.
+            return exact.Code;
+        }
+
+        var primary = code.Split('-', '_')[0];
+        if (Find(primary) is not null)
+        {
+            return primary;
+        }
+
+        // Traditional Chinese has no catalogue here; Simplified is the honest nearest match, and
+        // this is documented rather than silently substituted.
+        if (string.Equals(primary, "zh", StringComparison.OrdinalIgnoreCase))
+        {
+            return "zh-Hans";
+        }
+
+        return null;
+    }
+}
+
+/// <summary>
+/// Finds gaps in a translated catalogue. Kept separate from <see cref="Locator"/> so the checks
+/// are testable without touching the filesystem or the WPF thread.
+/// </summary>
+public static class CatalogueAudit
+{
+    /// <summary>Keys present in English but missing from the translation.</summary>
+    public static IReadOnlyList<string> Missing(string language, IReadOnlyDictionary<string, string> values) =>
+        Locator.BuiltInEnglish.Keys
+            .Where(k => !values.ContainsKey(k) || string.IsNullOrWhiteSpace(values[k]))
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
+    /// Keys in the translation that English does not define. These are almost always typos, and
+    /// they are worse than missing keys because they look translated while never appearing.
+    /// </summary>
+    public static IReadOnlyList<string> Unknown(string language, IReadOnlyDictionary<string, string> values) =>
+        values.Keys
+            .Where(k => !Locator.BuiltInEnglish.ContainsKey(k))
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
+    /// Values identical to English, excluding ones that genuinely are the same word in many
+    /// languages. Catches a file that was copied from en.json and never edited.
+    /// </summary>
+    public static IReadOnlyList<string> Untranslated(string language,
+        IReadOnlyDictionary<string, string> values) =>
+        values.Keys
+            .Where(k => Locator.BuiltInEnglish.TryGetValue(k, out var en) &&
+                string.Equals(en, values[k], StringComparison.Ordinal) &&
+                !InvariantAcrossLanguages.Contains(k) &&
+                !CorrectlyIdentical.Contains($"{language}:{k}"))
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
+    /// Entries where the English value is genuinely the correct form in that language, so an
+    /// identical string is right rather than lazy. Listed per language and key rather than as a
+    /// blanket rule, because "Oval" is the German word but "Page" is the French one and neither is
+    /// true of the other.
+    ///
+    /// Anything added here is a review decision. If a key ever gets a real translation for that
+    /// language, delete the entry and the audit starts checking it again.
+    /// </summary>
+    private static readonly HashSet<string> CorrectlyIdentical = new(StringComparer.Ordinal)
+    {
+        "en:app.title", "en:tool.lasso", "en:tool.text",
+
+        // Borrowed unchanged in every catalogue we ship.
+        "ar:tool.lasso", "cs:tool.lasso", "da:tool.lasso", "de:tool.lasso", "el:tool.lasso",
+        "es:tool.lasso", "fi:tool.lasso", "fr:tool.lasso", "he:tool.lasso", "hu:tool.lasso",
+        "it:tool.lasso", "ja:tool.lasso", "ko:tool.lasso", "nb:tool.lasso", "nl:tool.lasso",
+        "pl:tool.lasso", "pt:tool.lasso", "ro:tool.lasso", "ru:tool.lasso", "sv:tool.lasso",
+        "tr:tool.lasso", "uk:tool.lasso", "zh-Hans:tool.lasso",
+
+        // Same word in that language.
+        "cs:tool.text",      // Text
+        "de:tool.text",      // Text
+        "ro:tool.text",      // Text
+        "sv:tool.text",      // Text
+        "de:tool.ellipse",   // Oval
+        "el:action.email",   // Email
+        "fr:tool.capture",   // Capture
+        "nl:tool.pen",       // Pen
+        "fr:status.page",    // Page {0} / {1}
+        "hu:status.page",    // {0} / {1}. oldal
+        "ja:status.page",    // {0} / {1} ページ
+        "ko:status.page",    // {0} / {1} 페이지
+        "ar:status.page",    // صفحة {0} / {1}
+    };
+
+    private static readonly HashSet<string> InvariantAcrossLanguages = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Placeholder arguments must survive translation, otherwise a formatted string throws at
+    /// runtime. This is the failure mode that unit tests miss and a teacher sees: a crash or a
+    /// stray "{0}" the moment a status line updates.
+    /// </summary>
+    public static IReadOnlyList<string> PlaceholderMismatch(string language,
+        IReadOnlyDictionary<string, string> values)
+    {
+        var problems = new List<string>();
+        foreach (var (key, translated) in values)
+        {
+            if (!Locator.BuiltInEnglish.TryGetValue(key, out var english))
+            {
+                continue;
+            }
+
+            var expected = Placeholders(english);
+            var actual = Placeholders(translated);
+            if (!expected.OrderBy(x => x, StringComparer.Ordinal)
+                .SequenceEqual(actual.OrderBy(x => x, StringComparer.Ordinal)))
+            {
+                problems.Add($"{key}: expected [{string.Join(",", expected)}] " +
+                    $"but got [{string.Join(",", actual)}]");
+            }
+        }
+
+        return problems;
+    }
+
+    private static IEnumerable<string> Placeholders(string value)
+    {
+        var i = 0;
+        while (i < value.Length)
+        {
+            if (value[i] != '{')
+            {
+                i++;
+                continue;
+            }
+
+            var end = value.IndexOf('}', i);
+            if (end < 0)
+            {
+                yield break;
+            }
+
+            var body = value.Substring(i + 1, end - i - 1);
+            // Keep the index and any format specifier, drop the alignment filler.
+            var colon = body.IndexOf(':');
+            yield return colon >= 0 ? body.Substring(0, colon) : body;
+            i = end + 1;
+        }
+    }
+}
+
 public sealed class Locator
 {
     /// <summary>
