@@ -30,19 +30,27 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
 - Insert images from disk, with a missing file shown as a placeholder rather than failing the
   page.
 - Capture the desktop and place it on the page.
-- Export to PDF (one page per board page) or PNG per page, or save the board file.
+- Import PDF (embedded page images) and PPTX/DOCX (embedded preview), reporting clearly when a
+  file has nothing extractable rather than showing an empty page.
+- Export to PDF (one page per board page) or PNG per page, print via the shell print verb on a
+  staged PDF, or email the board as a zip package.
+- Replay a page's strokes in draw order, with pause, a scrubber, speed selection and an
+  overlay mode. Timing comes from the timestamps recorded as you draw, so a page drawn before
+  this feature existed replays as a single moment rather than pretending to be animated.
+- Record the screen to a self-contained uncompressed AVI (10 fps, no external codec, no
+  `avifil32` dependency).
 
-**Teaching tools** (vendor manual section 5)
-- Live magnifier, spotlight, screen curtain, teaching clock (digital / simulated / counting /
-  countdown), on-screen keyboard.
-- Calculator, ruler, compass, set square, protractor, table sheet.
+**Presentation**
+- Three themes: light, dark, and a high-contrast theme for projectors and low-vision use. The
+  default follows the OS accessibility setting rather than a hardcoded light theme.
 
 **Hardware**
 - USB digitizer discovery with VID/PID, and a diagnostics panel plus a saveable report.
 - Four-point calibration with a projective fit, per-board persistence, and worst-case error
   reporting.
 - Palm rejection: touch is ignored while a pen is in contact.
-- Gestures: fist-hold erase, hand-wave page turn, palm launch.
+- Gestures: fist-hold erase, hand-wave page turn, palm launch, two-finger pinch/pan/twist, and a
+  recognition pen (circle draws a spotlight, square opens the magnifier).
 
 ## Project layout
 
@@ -63,10 +71,11 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
       ColorPickerWindow.cs      colour picker
       MainWindow.xaml(.cs)      chrome, tool palette, file handling, wiring
       CrashLog.cs               rotating log and diagnostics export
-    tests/EBoard.Tests/         xUnit tests, 124 passing
+    tests/EBoard.Tests/         xUnit tests, 205 passing
     tools/IconGen/              build-time icon generator (not shipped)
     docs/                       hardware notes, extracted vendor spec, roadmap
     build/publish.ps1           per-runtime self-contained publish with checksums
+    build/install.ps1           per-user installer with a digitizer precheck
 
 ## Application icon
 
@@ -96,9 +105,37 @@ It is wired in two places, because they need different mechanisms:
     dotnet build src\EBoard\EBoard.csproj -c Release
     dotnet test  tests\EBoard.Tests\EBoard.Tests.csproj -c Release
     powershell -ExecutionPolicy Bypass -File build\publish.ps1
+    powershell -ExecutionPolicy Bypass -File build\install.ps1
 
-Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 124 tests
-passing. The self-contained win-x64 publish is 145 MB across 243 files and launches cleanly.
+Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 205 tests
+passing. The self-contained win-x64 publish launches cleanly, and `install.ps1` has been run
+end to end against a real per-user install directory, including the digitizer precheck and a
+start-and-close verification.
+
+The soak tests are tagged so the fast loop stays fast:
+
+    dotnet test tests\EBoard.Tests\EBoard.Tests.csproj -c Release --filter "Category!=Soak"
+    dotnet test tests\EBoard.Tests\EBoard.Tests.csproj -c Release --filter "Category=Soak"
+
+They cover the failures that would otherwise only appear after a lesson: unbounded history
+growth, a board file that grows on every save/load round trip, erase ordering, and page index
+drift across repeated inserts and deletes.
+
+## Installing on a classroom machine
+
+`build\install.ps1` installs per-user, so it needs no elevation and no Windows Installer service,
+which is what usually works on a locked-down school image. It checks for a running instance,
+probes for HID touch or pen devices, warns if Windows touch is disabled, copies the publish,
+creates shortcuts, and then starts the app to confirm it comes up.
+
+    powershell -ExecutionPolicy Bypass -File build\install.ps1
+
+Use `-Force` to replace an existing install (it backs the old directory up first) and
+`-SkipPrecheck` on a machine where the digitizer is deliberately not attached.
+
+The screen recorder writes uncompressed AVI, so a ten-minute recording is a large file. It needs
+`Videos\EBoard` to be writable and to have room; there is no retention policy, so a machine used
+for recorded student work should have that folder managed.
 
 ## Hardware bring-up
 
@@ -122,20 +159,27 @@ active. The Diagnostics panel reports which one is in use.
 These are real gaps, not oversights:
 
 - **No real-hardware verification yet.** Calibration, pen pressure, multi-touch and the gestures
-  have not been exercised against an actual panel. This is the largest remaining risk.
-- **No PDF, Word or PPT import.** The vendor's "open file" accepts them; only images can be
-  inserted. Rendering office documents needs a background approach that survives locked-down
-  school images, which rules out office automation.
-- **English UI only.** The vendor manual claims 20 languages.
-- **No print or email export.** PDF and PNG export exist.
-- **No video player or media tools.** The packaged build depends on DirectShow-era components
-  that will not work on a current Windows image.
-- **No screen or audio recorder.** Implementable, but it needs a storage policy for
-  student-recorded material first.
-- **No recognition pen** (draw a circle for a spotlight, a square for a magnifier).
-- **No `.TY` board import.** Undocumented vendor format.
+  have not been exercised against an actual panel. This is the largest remaining risk. The
+  digitizer precheck in `install.ps1` also reports nothing on a machine with no panel attached,
+  which is the state it was last tested in.
+- **PDF, Word and PPT import is partial.** PDFs are read for embedded page images, so a
+  vector-only PDF reports that it cannot be imported. Office formats are read for their embedded
+  preview and media, not reflowed: real layout needs a rendering approach that survives
+  locked-down school images, which rules out office automation.
+- **Four languages, not twenty.** en, de, fr and it ship; the vendor manual claims 20. The
+  resource system falls back to English per key, so a partial translation degrades rather than
+  breaking.
+- **No video player or audio tools.** The vendor's packaged build depends on DirectShow-era
+  components that will not run on a current Windows image.
+- **No audio recorder**, and the screen recorder has no retention policy. It writes uncompressed
+  AVI, so storage needs managing on a machine recording student work.
+- **No local resource library browser.** Files can be imported; there is no bundled library.
+- **No `.TY` board import.** Undocumented vendor format; reading it would require reverse
+  engineering, which is out of scope here.
 - **No teacher-to-student control protocol.** Undocumented and vendor-paired; see
   `..\EClass_Win11\Spec\FINDINGS_Lab.md`.
+- **Unsigned.** The signing hook is wired up in `build\publish.ps1` but no certificate is
+  committed, so SmartScreen will warn on first run until one is supplied.
 
 ## Boundaries
 

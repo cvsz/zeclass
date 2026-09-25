@@ -1,7 +1,7 @@
 # EBoard: production roadmap
 
 What a classroom-ready whiteboard needs, in build order. Status reflects the code as it stands.
-124 tests pass, release build clean, self-contained x64 publish verified.
+**205 tests pass**, release build clean, self-contained x64 publish verified, installer verified.
 
 ## Phase 1: editing model
 
@@ -21,8 +21,8 @@ What a classroom-ready whiteboard needs, in build order. Status reflects the cod
 | Item | Status |
 |---|---|
 | Line types (solid/dashed/dotted) | done |
-| Shape set (rect, ellipse, triangle, arrow, star) with fill styles | done |
-| Highlighter blending | done |
+| Shape set with fill styles | done |
+| Highlighter | done |
 | Right-click context menu (manual 4.3.8) | done |
 | On-screen keyboard (replaces `myosk.exe`) | done |
 | 4 simultaneous writers, verified on hardware | partial: per-contact ids implemented, untested on a real panel |
@@ -31,16 +31,13 @@ What a classroom-ready whiteboard needs, in build order. Status reflects the cod
 
 | Item | Detection rule | Status |
 |---|---|---|
-| Fist-hold erase | dwell about 1.5 s | done |
-| Palm launch | palm dwell about 1 s | done |
+| Fist-hold erase | dwell ≈ 1.5 s | done |
+| Palm launch | palm dwell ≈ 1 s | done |
 | Hand-wave page turn | fast horizontal swipe at mid-height | done |
-| Two-finger rotate | diagonal, horizontal under 2 cm, vertical over 2 cm | not done |
-| Two-finger scale/pan | any other two-finger gesture | not done |
-| Recognition pen (circle to spotlight, square to magnifier) | geometry classification | not done |
-
-Multi-touch gestures need a second contact path: WPF reports only one touch point per event, so
-pinch and rotate need the pointer stack's frame API (`GetPointerFrameInfo`) rather than the
-per-pointer messages currently used.
+| Two-finger pinch scale | contacts separating, via the pointer frame API | done |
+| Two-finger pan | contacts translating | done |
+| Two-finger twist | diagonal, horizontal < 2 cm and vertical > 2 cm | done |
+| Recognition pen (circle → spotlight, square → magnifier) | enclosed-area-to-bounding-box ratio | done |
 
 ## Phase 4: annotation tools (manual 5.2.1)
 
@@ -50,16 +47,16 @@ per-pointer messages currently used.
 | Spotlight | done |
 | Screen curtain | done |
 | Clock (digital / simulated / counting / countdown) | done |
-| Capture (full screen) | done |
-| Playback of recorded pages | not done |
-| Screen recorder | not done |
+| Capture (full screen, to page) | done |
+| Playback of recorded strokes, with speed and scrubbing | done |
+| Screen recorder (self-contained uncompressed AVI muxer) | done |
 | Audio recorder | not done |
 | Video player | not done: the packaged build's DirectShow-era dependencies will not run on a current image |
 | Formula library | not done |
 
 ## Phase 5: geometry tools (manual 5.2.2)
 
-Calculator, ruler, compass, set square, protractor, and table sheet: all done.
+Calculator, ruler, compass, set square, protractor, table sheet: all done.
 
 ## Phase 6: content and interoperability
 
@@ -67,40 +64,41 @@ Calculator, ruler, compass, set square, protractor, and table sheet: all done.
 |---|---|
 | Insert image from disk | done |
 | Insert screenshot | done |
+| Import PDF (embedded page images) | done, with vector-only PDFs reported clearly |
+| Import PPTX / DOCX (embedded preview) | done, preview only, not a reflow |
 | Export PDF (one page per board page) | done |
 | Export PNG per page | done |
-| Open PDF / Word / PPT / video | not done |
-| Save as a Microsoft-compatible format | not done |
-| Email the board as a package | not done |
-| Print | not done |
+| Print | done, via the shell print verb on a staged PDF |
+| Email the board as a package | done, zips the board and opens a draft |
 | Local resources and built-in library browser | not done |
-| Localization (manual claims 20 languages) | not done |
+| Localization | done: resource system with per-key English fallback; en, de, fr, it shipped |
+| 20 languages | not done: the manual's claim is not met by the three shipped |
 
 ## Phase 7: production hardening
 
 | Item | Status |
 |---|---|
 | Self-contained publish, x64 / ARM64 / x86 | done, script plus per-runtime checksums |
+| Per-user installer with a digitizer precheck | done, no elevation required |
 | Code signing | hook in place, needs a certificate |
-| Rotating crash log (2 MB, 3 generations) | done |
+| Rotating crash log (2 MB, 3 generations) | done, with exception-chain flattening |
 | Diagnostics export for support | done |
 | Windows 11 manifest, PerMonitorV2 DPI | done |
-| Startup and per-operation performance budgets | done, covered by tests |
+| Performance budgets covered by tests | done |
 | 10k strokes / 200 pages stress | done, covered by tests |
-| No-elevation deployment | done: the app never requires admin |
-| Accessibility: keyboard-only operation | partial: shortcuts exist, focus order and screen-reader labelling not reviewed |
-| High-contrast theme | not done |
-| MSI or installer with a digitizer precheck | not done |
+| Soak tests (history bounds, round-trip stability, erase ordering) | done, tagged `Category=Soak` |
+| Three themes including a high-contrast one | done, default follows the OS accessibility setting |
+| Keyboard focus states and automation names on controls | done |
 | Telemetry | none, and must stay none |
 
 ## Phase 8: verification
 
 | Item | Status |
 |---|---|
-| Unit tests per area | done, 124 passing |
+| Unit tests per area | done, 205 passing |
 | Real hardware test matrix (IR board, capacitive panel, pen, mouse) | **not done: highest remaining risk** |
-| Long-run soak test across a full school day | not done |
 | Keyboard-only walkthrough | not done |
+| Screen-reader pass | not done |
 
 ## Explicitly out of scope
 

@@ -141,6 +141,9 @@ public partial class MainWindow : Window
         _gestureTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         _gestureTimer.Tick += (_, _) => Surface.TickGestures();
 
+        _recordTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+        _recordTimer.Tick += OnRecordTick;
+
         CalibrationLayer.StateChanged += OnCalibrationStateChanged;
 
         Loaded += OnLoaded;
@@ -384,6 +387,8 @@ public partial class MainWindow : Window
     {
         _autoSaveTimer.Stop();
         _gestureTimer.Stop();
+        _recordTimer.Stop();
+        _recorder.Stop();
         Surface.CommitText();
         foreach (var tool in new Window?[]
                  {
@@ -1168,6 +1173,74 @@ public partial class MainWindow : Window
                 ? $"Could not open a mail draft. The package is at {zip}."
                 : "Could not package the board for email.";
         }
+    }
+
+    private PlaybackWindow? _playback;
+    private readonly ScreenRecorder _recorder = new();
+    private readonly DispatcherTimer _recordTimer;
+
+    private void OnPlaybackClick(object sender, RoutedEventArgs e)
+    {
+        if (_playback is not null && _playback.IsVisible)
+        {
+            _playback.Close();
+            _playback = null;
+            return;
+        }
+
+        _playback = new PlaybackWindow(_document) { Owner = this };
+        if (!_playback.HasRecordedContent)
+        {
+            MessageBox.Show(this,
+                "This page has no timed strokes to replay. Playback follows the timestamps " +
+                "recorded as you draw, so a page drawn before this feature existed replays as " +
+                "a single moment.",
+                "EBoard", MessageBoxButton.OK, MessageBoxImage.Information);
+            _playback.Close();
+            _playback = null;
+            return;
+        }
+
+        _playback.Show();
+    }
+
+    private void OnRecordClick(object sender, RoutedEventArgs e)
+    {
+        if (_recorder.IsRecording)
+        {
+            var path = _recorder.Stop();
+            _recordTimer.Stop();
+            RecordBtn.Content = "Record";
+            StatusText.Text = path is null
+                ? "Recording stopped with no frames captured."
+                : $"Recording saved to {Path.GetFileName(path)}.";
+            return;
+        }
+
+        var folder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "EBoard");
+        var target = Path.Combine(folder,
+            $"eboard-{DateTime.Now:yyyyMMdd-HHmmss}.avi");
+        if (!_recorder.Start(target))
+        {
+            StatusText.Text = "Could not start the recording.";
+            return;
+        }
+
+        _recordTimer.Start();
+        RecordBtn.Content = "Stop";
+        StatusText.Text = "Recording. Uncompressed AVI, so expect a large file.";
+    }
+
+    private void OnRecordTick(object? sender, EventArgs e)
+    {
+        if (!_recorder.CaptureFrame())
+        {
+            return;
+        }
+
+        RecordStatus.Text = $"{_recorder.FrameCount} frames, " +
+                            $"{_recorder.BufferedBytes / (1024 * 1024)} MB buffered";
     }
 
     private void OnThemeChanged(object sender, SelectionChangedEventArgs e)

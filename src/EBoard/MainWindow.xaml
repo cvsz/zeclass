@@ -320,6 +320,15 @@
                     MinWidth="58" Click="OnKeyboardClick" ToolTip="On-screen keyboard (F5)" />
             <Button x:Name="CaptureBtn" Content="Capture" Style="{StaticResource ChromeButton}"
                     MinWidth="80" Click="OnCaptureClick" ToolTip="Insert a screenshot of the desktop (F6)" />
+            <Button x:Name="RecordBtn" Content="Record" Style="{StaticResource ChromeButton}"
+                    MinWidth="76" Click="OnRecordClick"
+                    ToolTip="Record the screen to an AVI" />
+            <Button x:Name="PlaybackBtn" Content="Play back" Style="{StaticResource ChromeButton}"
+                    MinWidth="88" Click="OnPlaybackClick"
+                    ToolTip="Replay this page's strokes in draw order" />
+            <TextBlock x:Name="RecordStatus" Text="" Margin="8,0,0,0" MinWidth="180"
+                       Foreground="{StaticResource ChromeBorder}" VerticalAlignment="Center"
+                       FontSize="12" />
           </StackPanel>
           <StackPanel Orientation="Horizontal" Grid.Column="2">
             <Button x:Name="ExportBtn" Content="Export" Style="{StaticResource ChromeButton}"
