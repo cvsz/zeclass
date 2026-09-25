@@ -195,27 +195,44 @@ public sealed class ImporterTests : IDisposable
 
 /// <summary>
 /// Checks the importer against the real vendor manual, which is a 31-page PDF with embedded
-/// images. Skipped when the file is absent so the suite still runs on a machine without it.
+/// images.
+///
+/// The manual is the vendor's copyrighted document and is deliberately not committed, so this
+/// test skips unless you point it at your own copy via the <c>EBOARD_VENDOR_MANUAL</c>
+/// environment variable. It skips loudly rather than passing quietly: a green result that means
+/// "nothing was actually checked" is worse than an honest skip, because a broken PDF importer
+/// would otherwise look fine in CI forever.
 /// </summary>
 public sealed class PdfImporterRealWorldTests
 {
-    private const string ManualPath = @"D:\eclass\EClass_ExtractedMSI\disk1\Newusersmanual.pdf";
-
-    [Fact]
-    public void RealManualYieldsExtractableImages()
+    private static string? LocateManual()
     {
-        if (!File.Exists(ManualPath))
+        var fromEnv = Environment.GetEnvironmentVariable("EBOARD_VENDOR_MANUAL");
+        if (!string.IsNullOrWhiteSpace(fromEnv) && File.Exists(fromEnv))
         {
-            return;
+            return fromEnv;
         }
 
-        Assert.NotNull(PdfImporter.TryReadPageCount(ManualPath));
+        // Also accept a copy placed beside the repository, so no absolute path is ever baked in.
+        var local = Path.Combine(AppContext.BaseDirectory, "testdata", "vendor-manual.pdf");
+        return File.Exists(local) ? local : null;
+    }
+
+    [SkippableFact]
+    public void RealManualYieldsExtractableImages()
+    {
+        var manual = LocateManual();
+        Skip.If(manual is null,
+            "vendor manual not present. Set EBOARD_VENDOR_MANUAL to a local copy of the " +
+            "EClass user guide to exercise the PDF importer against a real document.");
+
+        Assert.NotNull(PdfImporter.TryReadPageCount(manual));
 
         var dir = Path.Combine(Path.GetTempPath(), "eboard-pdf-" + Guid.NewGuid().ToString("N"));
         try
         {
             var result = new ImportResult();
-            var files = PdfImporter.Render(ManualPath, 1920, 1080, dir, result);
+            var files = PdfImporter.Render(manual, 1920, 1080, dir, result);
 
             Assert.NotEmpty(files);
             Assert.All(files, f => Assert.True(File.Exists(f)));
