@@ -102,10 +102,55 @@ as a way to exercise the flow.
 - Very large pages (10k+ strokes) will show a pause on page switch because the whole page is
   re-cached. Split lessons across pages or boards.
 
-## 7. What is not covered
+## 7. Verifying the panel: the acceptance run
+
+Everything above assumes the panel works. That assumption is the largest remaining risk in this
+project, and it cannot be discharged from a development machine with no panel attached. So the app
+ships a guided run that produces evidence instead of an assertion.
+
+Click **Acceptance test** in the status bar. It walks through one capability at a time, shows the
+instruction, and records what actually arrives through the real input pipeline — the same
+`InkSurface` a teacher draws with, not a parallel test path that could pass while the real one
+fails:
+
+| Check | What it proves |
+| --- | --- |
+| Digitizer enumerated | the panel is visible to Windows, with VID/PID recorded |
+| Touch accuracy | touch lands within 40 px of an on-screen target, measured across four hits |
+| Simultaneous contacts | how many fingers the panel reports at once |
+| Pen pressure | normalized pressure spans at least 0.25 across one stroke |
+| Barrel-switch eraser | flipping the pen changes the reported tip |
+| Palm rejection | no touch sample is accepted while the pen is in contact |
+| Calibration accuracy | worst-case error is within the documented 12 px |
+| Pointer to render latency | p95 latency is within 40 ms |
+
+Save the report to `Documents\EBoard` as both Markdown (for a human) and JSON (for a ticket or a
+procurement record).
+
+### A run is only honest if it can fail
+
+Two rules are deliberate and are covered by tests:
+
+- **A missing capability is SKIP, never PASS.** A pen-only panel reports pen checks as skipped,
+  and a run containing a skip is explicitly *not* a complete pass. A green report that quietly
+  ignored absent hardware would hide the exact problem the run exists to find.
+- **Skipping a step by hand records a skip**, not a pass.
+
+The report also records which input path was live. On the `WM_POINTER` path the app gets pressure,
+eraser-tip identity and palm flags from the driver. On the WPF fallback it does not, so an
+eraser-tip check on a fallback run can only ever skip — which is the correct answer, not a defect
+in the app.
+
+Thresholds live in `AcceptanceThresholds`. The defaults are loose enough to pass a mediocre panel
+and tight enough to catch a broken one. A school with good hardware can tighten them and record
+why.
+
+## 8. What is not covered
 
 - No `.TY` board import (vendor format, undocumented).
-- No gesture recognition (pinch-to-zoom, palm swipe erase) — the vendor advertises finger
-  gestures and this does not implement them yet.
-- No handwriting recognition, recorder, magnifier, or spotlight tools.
 - No teacher-to-student control channel.
+- No handwriting recognition or formula library.
+- No audio recorder or video player.
+- The legacy `TouchServer.exe` calibration daemon is not used. Calibration here is solved
+  directly from four measured points, which removes the vendor helper rather than reimplementing
+  it.

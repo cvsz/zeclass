@@ -1243,6 +1243,25 @@ public partial class MainWindow : Window
                             $"{_recorder.BufferedBytes / (1024 * 1024)} MB buffered";
     }
 
+    private HardwareAcceptanceWindow? _acceptance;
+
+    /// <summary>
+    /// Opens the guided hardware acceptance run. It takes a live surface of its own, so the
+    /// teacher can draw on the test page without disturbing the lesson board.
+    /// </summary>
+    private void OnAcceptanceClick(object sender, RoutedEventArgs e)
+    {
+        if (_acceptance is not null && _acceptance.IsVisible)
+        {
+            _acceptance.Activate();
+            return;
+        }
+
+        _acceptance = new HardwareAcceptanceWindow { Owner = this };
+        _acceptance.Closed += (_, _) => _acceptance = null;
+        _acceptance.Show();
+    }
+
     private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ThemeBox.SelectedItem is ThemeColors theme)

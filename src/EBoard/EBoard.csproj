@@ -54,6 +54,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The test project asserts on a few internal seams (the acceptance run, for example).
+         Narrow and explicit rather than opening the whole assembly up. -->
+    <InternalsVisibleTo Include="EBoard.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Language files are copied so the picker is populated on a fresh install. -->
     <None Include="lang\*.json" Pack="false" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

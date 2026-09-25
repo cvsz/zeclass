@@ -191,6 +191,9 @@ public sealed class InkSurface : FrameworkElement
     /// <summary>True once the native window accepted WM_POINTER messages for this surface.</summary>
     public bool HasPointerTarget { get; private set; }
 
+    /// <summary>Contacts currently down. Used by the hardware acceptance harness.</summary>
+    public int ContactCount => _contacts.Count;
+
     public TextEditSession? TextSession => _textSession;
 
     // ---- lifecycle -------------------------------------------------------------
@@ -600,6 +603,10 @@ public sealed class InkSurface : FrameworkElement
     {
         if (ShouldReject(s))
         {
+            // Raised even when rejected, so the harness can prove that palm rejection fired
+            // rather than inferring it from the absence of a stroke.
+            SampleObserved?.Invoke(this, new SurfaceSampleEventArgs(
+                s, rejected: true, normalizedPressure: 0));
             return;
         }
 
@@ -655,10 +662,18 @@ public sealed class InkSurface : FrameworkElement
 
     private void OnMove(PointerSample s)
     {
-        if (ShouldReject(s))
+        // Every sample from both input paths passes through here, so this is the one place the
+        // hardware acceptance harness can observe the real pipeline rather than a parallel one.
+        SampleObserved?.Invoke(this, new SurfaceSampleEventArgs(
+            s,
+            _engine.ShouldIgnoreTouch(),
+            _engine.NormalizePressure(s.Id, s.Pressure)));
+
+        if (s.IsPen)
         {
-            return;
+            _engine.RecordPressure(s.Id, s.Pressure);
         }
+
 
         _gestures.NoteMove(s.Id, s.X, s.Y, Environment.TickCount64);
         _twoFinger.Update(s.Id, s.X, s.Y);
@@ -1666,7 +1681,34 @@ public sealed class InkSurface : FrameworkElement
 
     public event EventHandler<Point>? ContextMenuRequested;
 
+    /// <summary>
+    /// Raised for every contact sample from either input path, including samples the surface
+    /// rejected. The hardware acceptance harness subscribes to this so it measures the same
+    /// pipeline the teacher draws with, rather than a parallel one that could pass while the
+    /// real one fails.
+    /// </summary>
+    public event EventHandler<SurfaceSampleEventArgs>? SampleObserved;
+
     private PointerSample ElementSample(PointerInputType type, int id, Point element, bool inverted,
         double pressure) => new(type, id, element.X, element.Y, pressure, true, true, inverted, false,
             double.NaN, double.NaN);
+}
+
+/// <summary>A single observed contact sample, plus the engine's decision about it.</summary>
+public sealed class SurfaceSampleEventArgs : EventArgs
+{
+    public SurfaceSampleEventArgs(PointerSample sample, bool rejected, double normalizedPressure)
+    {
+        Sample = sample;
+        Rejected = rejected;
+        NormalizedPressure = normalizedPressure;
+    }
+
+    public PointerSample Sample { get; }
+
+    /// <summary>True when the surface dropped the sample, for example palm rejection.</summary>
+    public bool Rejected { get; }
+
+    /// <summary>Pressure after the per-device envelope, so 0..1 is comparable across pens.</summary>
+    public double NormalizedPressure { get; }
 }

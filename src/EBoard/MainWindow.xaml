@@ -342,6 +342,10 @@
             <Button x:Name="ExportDiagBtn" Content="Save report" Style="{StaticResource ChromeButton}"
                     MinWidth="106" Margin="0" Click="OnExportDiagnosticsClick"
                     ToolTip="Write a diagnostics file for support" />
+            <Button x:Name="AcceptanceBtn" Content="Acceptance test"
+                    Style="{StaticResource ChromeButton}" MinWidth="132" Margin="8,0,0,0"
+                    Click="OnAcceptanceClick"
+                    ToolTip="Verify this panel's pressure, touch, palm rejection and calibration" />
             <TextBlock x:Name="DigitizerText" Text="Digitizer: probing..." Margin="12,0,0,0"
                        Foreground="{StaticResource ChromeBorder}" VerticalAlignment="Center"
                        FontSize="13" />
