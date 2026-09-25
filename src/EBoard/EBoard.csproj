@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>EBoard</AssemblyName>
+    <RootNamespace>EBoard</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\EBoard.ico</ApplicationIcon>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RuntimeIdentifiers>win-x64;win-arm64;win-x86</RuntimeIdentifiers>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Version>1.0.0</Version>
+    <Company>EBoard</Company>
+    <Product>EBoard Interactive Whiteboard</Product>
+    <ProductVersion>1.0.0</ProductVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Deterministic>true</Deterministic>
+    <Platforms>x64;ARM64;x86</Platforms>
+
+    <!-- Deployment defaults. Override on the command line for a specific build. -->
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DebugType>embedded</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <!--
+      Code signing is opt-in: supply a certificate thumbprint and path, e.g.
+        dotnet publish -c Release -r win-x64 -p:SignThumbprint=ABC123... -p:SignPfx=cert.pfx
+      Unset, the build stays unsigned, which is fine for internal pilots but will draw
+      SmartScreen warnings on locked-down school images.
+    -->
+    <SignAssembly Condition="'$(SignThumbprint)' != ''">true</SignAssembly>
+    <AssemblyOriginatorKeyFile Condition="'$(SignPfx)' != ''">$(SignPfx)</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(SignThumbprint)' != ''">
+    <PackageReference Include="Azure.CodeSigning" Version="2.0.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Source of truth for the icon; regenerate with tools\IconGen. -->
+    <None Include="Assets\EBoard.ico" Pack="false" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Language files are copied so the picker is populated on a fresh install. -->
+    <None Include="lang\*.json" Pack="false" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

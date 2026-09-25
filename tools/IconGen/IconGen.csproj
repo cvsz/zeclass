@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Build-time only tool: renders the EBoard application icon at every size the Windows shell
+    and the taskbar ask for, and packs them into a single .ico. It is not part of the shipped
+    application, so it lives under tools/ with its own project and no test coverage.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>IconGen</AssemblyName>
+    <RootNamespace>EBoard.IconGen</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <NoWarn>CA1416</NoWarn>
+  </PropertyGroup>
+
+</Project>
