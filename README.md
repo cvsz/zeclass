@@ -87,20 +87,19 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
     build/publish.ps1           per-runtime self-contained publish with checksums
     build/install.ps1           per-user installer with a digitizer precheck
 
-## Application icon
+## Application icon and branding
 
-The mark is generated as vector art, not drawn by hand or scaled from a bitmap:
+The icon is built from the company logo, not drawn by hand:
 
-    dotnet run --project tools\IconGen -- src\zEClass\Assets\zEClass.ico
-    dotnet run --project tools\IconGen -- <out-dir> --dump 16 32 48 256
+    powershell -ExecutionPolicy Bypass -File build\icon-from-logo.ps1 -Source D:\eclass\branding\zeazdev.png
 
 Ten sizes are packed into one `.ico` (16, 20, 24, 32, 40, 48, 64, 96, 128, 256) as PNG entries,
 which is what a current Windows shell expects and which preserves the antialiasing at small
-sizes. Each size is re-rendered from the same unit-square geometry at 4x and downsampled, and
-details that cannot survive are dropped per size: the bezier ink stroke becomes a single clean
-bar below 32 px, the pen nib and the red mark appear only at 48 px and up. The `--dump` flag
-writes individual frames to PNG, which is the only reliable way to confirm a 16 px icon is still
-legible.
+sizes. The script validates what it wrote (magic, entry count, every blob's PNG signature) and
+fails loudly rather than shipping a corrupt icon. The About dialog shows the same logo plus the
+organization emblem from `Assets\`; both are loaded defensively, so a missing file degrades to
+text rather than a crash. (`tools\IconGen` remains for the original vector mark but is no
+longer the shipped icon.)
 
 It is wired in two places, because they need different mechanisms:
 

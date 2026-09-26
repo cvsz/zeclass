@@ -46,6 +46,23 @@ public sealed class AboutTests
     }
 
     [Fact]
+    public void ShippedArtwork_LoadsSuccessfully()
+    {
+        _ui.Invoke(() =>
+        {
+            // The branding files are committed under Assets and flow to the test output, so
+            // this proves the dialog's happy path against the real artwork, not just the
+            // missing-file fallback above.
+            var logo = AboutWindow.TryLoadImage(AboutWindow.CompanyLogoFile, 150);
+            var emblem = AboutWindow.TryLoadImage(AboutWindow.EmblemFile, 120);
+            Assert.NotNull(logo);
+            Assert.NotNull(emblem);
+            Assert.Equal(150, logo.Height);
+            Assert.Equal(120, emblem.Height);
+        });
+    }
+
+    [Fact]
     public void Window_ConstructsWithoutThrowing()
     {
         _ui.Invoke(() =>
