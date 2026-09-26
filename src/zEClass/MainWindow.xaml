@@ -144,6 +144,36 @@
       <Setter Property="Height" Value="30" />
       <Setter Property="Margin" Value="0,2,0,4" />
     </Style>
+
+    <!--
+      Item templates for the palette ComboBoxes. Two problems they solve at once: the boxes
+      hold raw values (a uint color, a ThemeColors record, a LanguageInfo record), which WPF
+      would otherwise render as ToString() garbage, and the dropdown face is light while the
+      inherited foreground is light, which made every label invisible. Template text is dark
+      on purpose, so it reads on both the closed face and the open popup in every theme.
+    -->
+    <ui:ArgbToBrushConverter x:Key="ArgbToBrush" />
+    <DataTemplate x:Key="ColorItemTemplate">
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <Rectangle Width="20" Height="20" RadiusX="4" RadiusY="4" Margin="0,0,8,0"
+                   Stroke="#FF8A93A3" StrokeThickness="1"
+                   Fill="{Binding Converter={StaticResource ArgbToBrush}}" />
+        <TextBlock Text="{Binding StringFormat=#{0:X8}}" Foreground="#FF14171C"
+                   VerticalAlignment="Center" FontFamily="Consolas" FontSize="12" />
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:Key="ThemeItemTemplate">
+      <TextBlock Text="{Binding Name}" Foreground="#FF14171C"
+                 VerticalAlignment="Center" FontSize="13" />
+    </DataTemplate>
+    <DataTemplate x:Key="LanguageItemTemplate">
+      <TextBlock Text="{Binding NativeName}" ToolTip="{Binding EnglishName}"
+                 Foreground="#FF14171C" VerticalAlignment="Center" FontSize="13" />
+    </DataTemplate>
+    <DataTemplate x:Key="StringItemTemplate">
+      <TextBlock Text="{Binding}" Foreground="#FF14171C"
+                 VerticalAlignment="Center" FontSize="13" />
+    </DataTemplate>
   </Window.Resources>
 
   <Grid>
@@ -246,6 +276,7 @@
           <Separator Margin="0,6" Background="{StaticResource ChromeBorder}" />
           <TextBlock Text="Ink" Style="{StaticResource ChromeLabel}" Margin="4,0,0,2" />
           <ComboBox x:Name="ColorBox" Style="{StaticResource PaletteCombo}" Width="108"
+                    ItemTemplate="{StaticResource ColorItemTemplate}"
                     SelectedIndex="0" Cursor="Hand"
                     AutomationProperties.Name="Ink colour" />
           <Slider x:Name="WidthSlider" Width="108" Minimum="1" Maximum="24" Value="4"
@@ -254,20 +285,24 @@
                   AutomationProperties.Name="Stroke width" />
           <TextBlock Text="Line" Style="{StaticResource ChromeLabel}" Margin="4,4,0,0" />
           <ComboBox x:Name="LineStyleBox" Style="{StaticResource PaletteCombo}" Width="108"
+                    ItemTemplate="{StaticResource StringItemTemplate}"
                     SelectedIndex="0" Cursor="Hand" SelectionChanged="OnLineStyleChanged"
                     AutomationProperties.Name="Line style" />
           <TextBlock Text="Fill" Style="{StaticResource ChromeLabel}" Margin="4,4,0,0" />
           <ComboBox x:Name="FillBox" Style="{StaticResource PaletteCombo}" Width="108"
+                    ItemTemplate="{StaticResource StringItemTemplate}"
                     SelectedIndex="0" Cursor="Hand" SelectionChanged="OnFillChanged"
                     AutomationProperties.Name="Shape fill" />
 
           <Separator Margin="0,6" Background="{StaticResource ChromeBorder}" />
           <TextBlock Text="Theme" Style="{StaticResource ChromeLabel}" Margin="4,0,0,2" />
           <ComboBox x:Name="ThemeBox" Style="{StaticResource PaletteCombo}" Width="108"
+                    ItemTemplate="{StaticResource ThemeItemTemplate}"
                     SelectedIndex="0" Cursor="Hand" SelectionChanged="OnThemeChanged"
                     AutomationProperties.Name="Board theme" />
           <TextBlock Text="Language" Style="{StaticResource ChromeLabel}" Margin="4,4,0,0" />
           <ComboBox x:Name="LanguageBox" Style="{StaticResource PaletteCombo}" Width="108"
+                    ItemTemplate="{StaticResource LanguageItemTemplate}"
                     SelectedIndex="0" Cursor="Hand" SelectionChanged="OnLanguageChanged"
                     AutomationProperties.Name="Interface language" />
         </StackPanel>
