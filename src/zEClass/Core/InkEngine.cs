@@ -183,7 +183,11 @@ public sealed class InkEngine
                     ComputeSide(points, i, baseWidth, minimumWidth, left, right);
                 }
 
-                ctx.BeginFigure(SmoothedPath(left), false, false);
+                // The ribbon is a closed filled shape: the brush fills it and no pen
+                // outlines it. Declaring it unfilled would render nothing at all, which is
+                // exactly how every multi-point stroke once went invisible while the status
+                // bar kept counting committed strokes.
+                ctx.BeginFigure(SmoothedPath(left), true, true);
                 AppendSmoothed(ctx, left, true);
                 for (var i = right.Count - 1; i >= 0; i--)
                 {
