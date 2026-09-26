@@ -1,6 +1,6 @@
 # Localization
 
-24 interface languages ship: English built in, plus 23 catalogues in `src/EBoard\lang`.
+24 interface languages ship: English built in, plus 23 catalogues in `src/zEClass\lang`.
 
 ## How it works
 
@@ -20,7 +20,7 @@ hidden, in case one was dropped in by hand.
 
 ## Adding a language
 
-1. Create `src\EBoard\lang\<code>.json` with the shape below, translated.
+1. Create `src\zEClass\lang\<code>.json` with the shape below, translated.
 2. Add a `LanguageInfo` to `LanguageCatalog.All`. Set `RightToLeft: true` for Arabic, Hebrew, Persian
    and Urdu.
 3. Run the tests. The audit will tell you what you missed.

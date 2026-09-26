@@ -1,4 +1,4 @@
-# EBoard: interactive whiteboard for USB touch panels and pens
+# zEClass: interactive whiteboard for USB touch panels and pens
 
 A clean-room Windows 11 interactive whiteboard for classroom panels. Built as a replacement for
 the board surface of the legacy EClass 1.0.5 product, using no vendor code.
@@ -24,7 +24,7 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
   delete / copy / settings / lock.
 - Per-page background colour and image. A background image behind a locked page is the
   vendor's "fill" pen: writing on it reveals the picture.
-- Autosave every 60 s to `%LOCALAPPDATA%\EBoard\boards\autosave.ebboard`.
+- Autosave every 60 s to `%LOCALAPPDATA%\zEClass\boards\autosave.ebboard`.
 
 **Content**
 - Insert images from disk, with a missing file shown as a placeholder rather than failing the
@@ -58,7 +58,7 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
 
 ## Project layout
 
-    src/EBoard/
+    src/zEClass/
       Core/InkModel.cs          document, page, stroke, image model + board file serializer
       Core/InkEngine.cs         pressure calibration, palm rejection, outline geometry
       Core/PointerNative.cs     WM_POINTER reader (pressure, eraser tip, tilt, palm flag)
@@ -75,7 +75,7 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
       ColorPickerWindow.cs      colour picker
       MainWindow.xaml(.cs)      chrome, tool palette, file handling, wiring
       CrashLog.cs               rotating log and diagnostics export
-    tests/EBoard.Tests/         xUnit tests, 376 passing
+    tests/zEClass.Tests/         xUnit tests, 376 passing
     tools/IconGen/              build-time icon generator (not shipped)
     docs/                       hardware notes, extracted vendor spec, roadmap, localization
     build/publish.ps1           per-runtime self-contained publish with checksums
@@ -85,7 +85,7 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
 
 The mark is generated as vector art, not drawn by hand or scaled from a bitmap:
 
-    dotnet run --project tools\IconGen -- src\EBoard\Assets\EBoard.ico
+    dotnet run --project tools\IconGen -- src\zEClass\Assets\zEClass.ico
     dotnet run --project tools\IconGen -- <out-dir> --dump 16 32 48 256
 
 Ten sizes are packed into one `.ico` (16, 20, 24, 32, 40, 48, 64, 96, 128, 256) as PNG entries,
@@ -100,14 +100,14 @@ It is wired in two places, because they need different mechanisms:
 
 - **Executable icon** via `ApplicationIcon` in the project file, so the exe, taskbar, Alt+Tab and
   Explorer all show it without the app running.
-- **Window icon** loaded from `Assets\EBoard.ico` in code at startup. WPF's XAML type converter
+- **Window icon** loaded from `Assets\zEClass.ico` in code at startup. WPF's XAML type converter
   rejects a bare `.ico` path, so the `Icon="..."` attribute is deliberately absent; the asset is
   marked `CopyToOutputDirectory` so it ships with the publish.
 
 ## Build, test, publish
 
-    dotnet build src\EBoard\EBoard.csproj -c Release
-    dotnet test  tests\EBoard.Tests\EBoard.Tests.csproj -c Release
+    dotnet build src\zEClass\zEClass.csproj -c Release
+    dotnet test  tests\zEClass.Tests\zEClass.Tests.csproj -c Release
     powershell -ExecutionPolicy Bypass -File build\publish.ps1
     powershell -ExecutionPolicy Bypass -File build\install.ps1
 
@@ -118,8 +118,8 @@ start-and-close verification.
 
 The soak tests are tagged so the fast loop stays fast:
 
-    dotnet test tests\EBoard.Tests\EBoard.Tests.csproj -c Release --filter "Category!=Soak"
-    dotnet test tests\EBoard.Tests\EBoard.Tests.csproj -c Release --filter "Category=Soak"
+    dotnet test tests\zEClass.Tests\zEClass.Tests.csproj -c Release --filter "Category!=Soak"
+    dotnet test tests\zEClass.Tests\zEClass.Tests.csproj -c Release --filter "Category=Soak"
 
 They cover the failures that would otherwise only appear after a lesson: unbounded history
 growth, a board file that grows on every save/load round trip, erase ordering, and page index
@@ -138,7 +138,7 @@ Use `-Force` to replace an existing install (it backs the old directory up first
 `-SkipPrecheck` on a machine where the digitizer is deliberately not attached.
 
 The screen recorder writes uncompressed AVI, so a ten-minute recording is a large file. It needs
-`Videos\EBoard` to be writable and to have room; there is no retention policy, so a machine used
+`Videos\zEClass` to be writable and to have room; there is no retention policy, so a machine used
 for recorded student work should have that folder managed.
 
 ## Hardware bring-up
@@ -175,7 +175,7 @@ These are real gaps, not oversights:
   broken, but plausibility is not fluency: a teacher in front of a class will notice a term that is
   technically right and not idiomatic. Treat them as a reviewed-once-needed starting point, and get
   them checked before classroom deployment. Adding or fixing a language is a JSON edit in
-  `src\EBoard\lang` plus an entry in `LanguageCatalog`.
+  `src\zEClass\lang` plus an entry in `LanguageCatalog`.
 - **Only the toolbar and action strings are translated.** The catalogue covers roughly 48 keys: tool
   names, actions, status text and the calibration messages. Help text, the acceptance-test prompts
   and the diagnostics report are English-only. A full translation is a much larger job than the

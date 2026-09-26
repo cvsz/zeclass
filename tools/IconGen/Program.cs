@@ -6,10 +6,10 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace EBoard.IconGen;
+namespace zEClass.IconGen;
 
 /// <summary>
-/// Draws the EBoard mark and writes a multi-resolution .ico.
+/// Draws the zEClass mark and writes a multi-resolution .ico.
 ///
 /// The artwork is vector and re-rendered per size rather than scaled from one bitmap, because
 /// a downscaled 256 px icon turns to mush at 16 px in the taskbar. At the small sizes the
@@ -43,7 +43,7 @@ internal static class Program
     {
         var output = args.Length > 0
             ? args[0]
-            : Path.Combine(AppContext.BaseDirectory, "EBoard.ico");
+            : Path.Combine(AppContext.BaseDirectory, "zEClass.ico");
 
         if (args.Length > 1 && args[1] == "--dump")
         {

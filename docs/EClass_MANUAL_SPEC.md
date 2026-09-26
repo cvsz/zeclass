@@ -124,9 +124,9 @@ page. Verify against a screenshot before implementing.
   is **recommended** (this manual covers IR whiteboards used with a short-throw projector, which
   is why the FAQ discusses trapezoid and keystone calibration).
 
-## Feature gap: EBoard (the remake) vs. the manual
+## Feature gap: zEClass (the remake) vs. the manual
 
-| Manual feature | EBoard status |
+| Manual feature | zEClass status |
 |---|---|
 | Pen with color, type, size | done (color, size, solid/dashed/dotted) |
 | Line, geometry, filling pen | done (line, rect, ellipse, triangle, arrow, star, outline/filled) |

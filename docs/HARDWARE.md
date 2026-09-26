@@ -29,7 +29,7 @@ lines. Capacitive panels and active digitizers (Wacom-style) report pressure pro
 2. Wait for Windows to enumerate. Check Device Manager > Human Interface Devices, or
    Settings > Bluetooth & devices > Pen & Windows Ink > Touch and pen > "What Windows can
    see".
-3. Start `EBoard.exe` and read the status bar:
+3. Start `zEClass.exe` and read the status bar:
    - `Digitizer: USB pen + touch` — pen pressure and touch both available.
    - `Digitizer: USB touch` — touch only, no pen.
    - `Digitizer: none (mouse)` — nothing detected; work through section 4.
@@ -63,7 +63,7 @@ Check in order:
    utility that toggles this; run it once after installation.
 5. **Pen without pressure.** Some pens need their driver installed before the digitizer reports
    pressure. Until then the board draws uniform lines, which is expected.
-6. **Check the log.** `%LOCALAPPDATA%\EBoard\logs\eboard.log` records whether
+6. **Check the log.** `%LOCALAPPDATA%\zEClass\logs\zEClass.log` records whether
    `RegisterPointerInputTarget` succeeded. A failure means the app is on the WPF fallback path
    (reduced fidelity, not a hard failure).
 
@@ -73,7 +73,7 @@ A touch panel that is not perfectly parallel to its display, or whose reported c
 differs from the screen, will draw offset. This is normal on wall-mounted boards and is the
 first thing to fix before judging anything else.
 
-1. Start `EBoard.exe` and maximize it.
+1. Start `zEClass.exe` and maximize it.
 2. Click **Align** in the left palette. The board goes black and shows a cross.
 3. Touch the centre of each cross with the pen or your finger, four times, in the order shown.
    Each hit is marked with a green circle once recorded.
@@ -124,7 +124,7 @@ fails:
 | Calibration accuracy | worst-case error is within the documented 12 px |
 | Pointer to render latency | p95 latency is within 40 ms |
 
-Save the report to `Documents\EBoard` as both Markdown (for a human) and JSON (for a ticket or a
+Save the report to `Documents\zEClass` as both Markdown (for a human) and JSON (for a ticket or a
 procurement record).
 
 ### A run is only honest if it can fail

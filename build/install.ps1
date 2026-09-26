@@ -1,4 +1,4 @@
-# EBoard deployment for a classroom machine.
+# zEClass deployment for a classroom machine.
 #
 # Deliberately a script rather than an MSI: school images are often locked down, and an MSI
 # needs elevation and a Windows Installer service that may be disabled. This installs per-user
@@ -15,8 +15,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$appName = "EBoard"
-$exeName = "EBoard.exe"
+$appName = "zEClass"
+$exeName = "zEClass.exe"
 
 function Write-Step($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg) { Write-Host "    OK  $msg" -ForegroundColor Green }
@@ -54,10 +54,10 @@ $InstallDir = [Environment]::ExpandEnvironmentVariables($InstallDir)
 Write-Step "Pre-install checks"
 
 # Running app would block the copy.
-$running = Get-Process -Name "EBoard" -ErrorAction SilentlyContinue
+$running = Get-Process -Name "zEClass" -ErrorAction SilentlyContinue
 if ($running) {
   if (-not $Force) {
-    Write-Err2 "EBoard is running (pid $($running.Id -join ', ')). Close it, or re-run with -Force."
+    Write-Err2 "zEClass is running (pid $($running.Id -join ', ')). Close it, or re-run with -Force."
     exit 2
   }
   $running | Stop-Process -Force
@@ -88,7 +88,7 @@ if (-not $SkipPrecheck) {
     'HKLM:\SOFTWARE\Microsoft\TabletTip\1.7' -ErrorAction SilentlyContinue).EnableTouch
   if ($touchEnabled -eq 0) {
     Write-Warn2 "Windows touch is switched off. Enable it in Settings > Bluetooth & devices >"
-    Write-Warn2 "Pen & Windows Ink > Touch and pen, or EBoard falls back to the stylus path."
+    Write-Warn2 "Pen & Windows Ink > Touch and pen, or zEClass falls back to the stylus path."
   }
   elseif ($touchEnabled -eq 1) {
     Write-Ok "Windows touch is enabled"
@@ -142,7 +142,7 @@ if (-not $SkipShortcuts) {
       $link = $shell.CreateShortcut((Join-Path $dir "$($entry.Name).lnk"))
       $link.TargetPath = $entry.Path
       $link.WorkingDirectory = $InstallDir
-      $link.Description = "EBoard interactive whiteboard"
+      $link.Description = "zEClass Interactive Whiteboard"
       $link.IconLocation = "$entry.Path,0"
       $link.Save()
       Write-Ok "shortcut in $dir"
@@ -179,11 +179,11 @@ $process = Start-Process -FilePath $installed -WorkingDirectory $InstallDir -Pas
 Start-Sleep -Seconds 6
 if ($process.HasExited) {
   Write-Err2 "the app exited immediately with code $($process.ExitCode)."
-  Write-Err2 "check %LOCALAPPDATA%\EBoard\logs\eboard.log"
+  Write-Err2 "check %LOCALAPPDATA%\zEClass\logs\zEClass.log"
   exit 5
 }
 
-$log = Join-Path $configDir "logs\eboard.log"
+$log = Join-Path $configDir "logs\zEClass.log"
 if (Test-Path $log) {
   $errors = @(Get-Content $log | Select-String 'Dispatcher' -SimpleMatch)
   if ($errors.Count -gt 0) {

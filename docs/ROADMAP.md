@@ -1,4 +1,4 @@
-# EBoard: production roadmap
+# zEClass: production roadmap
 
 What a classroom-ready whiteboard needs, in build order. Status reflects the code as it stands.
 **205 tests pass**, release build clean, self-contained x64 publish verified, installer verified.
