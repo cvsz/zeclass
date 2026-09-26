@@ -49,6 +49,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- For System.Drawing.Icon frame selection in ApplyIcon. Managed-only on Windows (GDI+
+         is in-box), so this adds no native payload to the install. -->
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Source of truth for the icon; regenerate with tools\IconGen. -->
     <None Include="Assets\zEClass.ico" Pack="false" CopyToOutputDirectory="PreserveNewest" />
     <!-- Branding artwork for the About dialog. Loaded defensively at runtime, so a missing

@@ -82,6 +82,7 @@ public static class LanguageCatalog
         new("pl", "Polish", "Polski", false),
         new("cs", "Czech", "Čeština", false),
         new("sv", "Swedish", "Svenska", false),
+        new("th", "Thai", "ไทย", false),
         new("da", "Danish", "Dansk", false),
         new("nb", "Norwegian", "Norsk", false),
         new("fi", "Finnish", "Suomi", false),
@@ -196,6 +197,7 @@ public static class CatalogueAudit
         "es:tool.lasso", "fi:tool.lasso", "fr:tool.lasso", "he:tool.lasso", "hu:tool.lasso",
         "it:tool.lasso", "ja:tool.lasso", "ko:tool.lasso", "nb:tool.lasso", "nl:tool.lasso",
         "pl:tool.lasso", "pt:tool.lasso", "ro:tool.lasso", "ru:tool.lasso", "sv:tool.lasso",
+        "th:tool.lasso",
         "tr:tool.lasso", "uk:tool.lasso", "zh-Hans:tool.lasso",
 
         // Same word in that language.

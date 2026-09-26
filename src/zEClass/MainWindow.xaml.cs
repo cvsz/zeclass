@@ -169,6 +169,11 @@ public partial class MainWindow : Window
     /// .ico path (it only understands image formats its converter handles), so the icon is
     /// applied here from disk instead. The executable's own icon comes from the application
     /// manifest and is always present regardless of this.
+    ///
+    /// The frame is selected explicitly at 64 px rather than decoded through a URI. WPF's ICO
+    /// decoder over a URI picks the first frame in the file, which is the 16 px one, and the
+    /// taskbar and Alt+Tab then showed an upscaled 16 px image. Requesting 64 px takes the exact
+    /// 64 px frame for high-DPI taskbars and downscales cleanly everywhere else.
     /// </summary>
     private void ApplyIcon()
     {
@@ -181,19 +186,17 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // BitmapFrame with OnLoad reads the file eagerly, so the image is not tied to the
-            // file handle and the window keeps painting after the file is closed.
-            var bitmap = new System.Windows.Media.Imaging.BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-            bitmap.UriSource = new Uri(path, UriKind.Absolute);
-            bitmap.EndInit();
+            using var icon = new System.Drawing.Icon(path, new System.Drawing.Size(64, 64));
+            var bitmap = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                icon.Handle,
+                System.Windows.Int32Rect.Empty,
+                System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
             bitmap.Freeze();
             Icon = bitmap;
         }
         catch (Exception ex) when (ex is IOException or NotSupportedException or UriFormatException
-                                       or ArgumentException
-                                       or System.Runtime.InteropServices.COMException)
+                                        or ArgumentException
+                                        or System.Runtime.InteropServices.COMException)
         {
             CrashLog.Info($"Window icon not applied: {ex.Message}");
         }

@@ -1,6 +1,6 @@
 # Localization
 
-24 interface languages ship: English built in, plus 23 catalogues in `src/zEClass\lang`.
+25 interface languages ship: English built in, plus 24 catalogues in `src/zEClass\lang`.
 
 ## How it works
 
@@ -69,7 +69,7 @@ ever gets a real translation, delete the entry and the audit starts checking it 
 
 ## Known gaps
 
-- **No native-speaker review.** The 23 catalogues were produced without one. The audit proves
+- **No native-speaker review.** The 24 catalogues were produced without one. The audit proves
   nothing is missing, mistyped or untranslated; it cannot prove the wording is idiomatic. Get them
   checked before classroom deployment.
 - **Only about 48 strings are covered**: tool names, actions, status text and the calibration

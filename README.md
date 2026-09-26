@@ -45,7 +45,7 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
 **Presentation**
 - Three themes: light, dark, and a high-contrast theme for projectors and low-vision use. The
   default follows the OS accessibility setting rather than a hardcoded light theme.
-- 24 interface languages. The picker shows each language in its own script (`Deutsch`, `日本語`,
+- 25 interface languages. The picker shows each language in its own script (`Deutsch`, `日本語`,
   `العربية`), and switching to Arabic or Hebrew mirrors the whole window rather than leaving a
   half-flipped layout. Untranslated keys fall back to English one word at a time, so a partial
   translation degrades instead of blanking.
@@ -77,7 +77,7 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
       ColorPickerWindow.cs      colour picker
       MainWindow.xaml(.cs)      chrome, tool palette, file handling, wiring
       CrashLog.cs               rotating log and diagnostics export
-    tests/zEClass.Tests/         xUnit tests, 389 total
+    tests/zEClass.Tests/         xUnit tests, 397 total
     tools/IconGen/              build-time icon generator (not shipped)
     docs/                       hardware notes, extracted vendor spec, roadmap, localization
     build/publish.ps1           per-runtime self-contained publish with checksums
@@ -113,8 +113,8 @@ It is wired in two places, because they need different mechanisms:
     powershell -ExecutionPolicy Bypass -File build\publish.ps1
     powershell -ExecutionPolicy Bypass -File build\install.ps1
 
-Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 389 tests
-total: 388 passing and 1 conditional vendor-manual skip. Set `ZECLASS_VENDOR_MANUAL` to a local
+Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 397 tests
+total: 396 passing and 1 conditional vendor-manual skip. Set `ZECLASS_VENDOR_MANUAL` to a local
 vendor-manual PDF to run the remaining real-document check. The self-contained win-x64 publish launches cleanly, and `install.ps1` has been run
 end to end against a real per-user install directory, including the digitizer precheck and a
 start-and-close verification.
@@ -173,7 +173,7 @@ These are real gaps, not oversights:
   vector-only PDF reports that it cannot be imported. Office formats are read for their embedded
   preview and media, not reflowed: real layout needs a rendering approach that survives
   locked-down school images, which rules out office automation.
-- **The translations need a native speaker.** 24 languages ship, but they were produced without
+- **The translations need a native speaker.** 25 languages ship, but they were produced without
   review by a speaker of each. The wording is plausible and the audit proves nothing is missing or
   broken, but plausibility is not fluency: a teacher in front of a class will notice a term that is
   technically right and not idiomatic. Treat them as a reviewed-once-needed starting point, and get
