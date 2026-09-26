@@ -1,7 +1,7 @@
 # zEClass: production roadmap
 
 What a classroom-ready whiteboard needs, in build order. Status reflects the code as it stands.
-**205 tests pass**, release build clean, self-contained x64 publish verified, installer verified.
+**376 tests total: 375 passing, 1 conditional skip**, release build clean, self-contained x64 publish verified, installer verified.
 
 ## Phase 1: editing model
 
@@ -95,15 +95,15 @@ Calculator, ruler, compass, set square, protractor, table sheet: all done.
 
 | Item | Status |
 |---|---|
-| Unit tests per area | done, 205 passing |
+| Unit tests per area | done, 376 total (375 passing, 1 conditional vendor-manual skip) |
 | Real hardware test matrix (IR board, capacitive panel, pen, mouse) | **not done: highest remaining risk** |
 | Keyboard-only walkthrough | not done |
 | Screen-reader pass | not done |
 
 ## Explicitly out of scope
 
-- Teacher-to-student control protocol: undocumented and vendor-paired. See
-  `..\EClass_Win11\Spec\FINDINGS_Lab.md`.
+- Teacher-to-student control protocol: undocumented and vendor-paired. The local black-box
+  lab notes are intentionally not published with this repository.
 - `.TY` board format import: undocumented; reading it would require reverse engineering.
 - Student tablet sync, exams, lock/unlock.
 - Reproducing the vendor hook DLLs. Documented Windows APIs only.

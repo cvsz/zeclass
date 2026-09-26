@@ -75,7 +75,7 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
       ColorPickerWindow.cs      colour picker
       MainWindow.xaml(.cs)      chrome, tool palette, file handling, wiring
       CrashLog.cs               rotating log and diagnostics export
-    tests/zEClass.Tests/         xUnit tests, 376 passing
+    tests/zEClass.Tests/         xUnit tests, 376 total
     tools/IconGen/              build-time icon generator (not shipped)
     docs/                       hardware notes, extracted vendor spec, roadmap, localization
     build/publish.ps1           per-runtime self-contained publish with checksums
@@ -112,7 +112,8 @@ It is wired in two places, because they need different mechanisms:
     powershell -ExecutionPolicy Bypass -File build\install.ps1
 
 Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 376 tests
-passing. The self-contained win-x64 publish launches cleanly, and `install.ps1` has been run
+total: 375 passing and 1 conditional vendor-manual skip. Set `ZECLASS_VENDOR_MANUAL` to a local
+vendor-manual PDF to run the remaining real-document check. The self-contained win-x64 publish launches cleanly, and `install.ps1` has been run
 end to end against a real per-user install directory, including the digitizer precheck and a
 start-and-close verification.
 
@@ -187,8 +188,8 @@ These are real gaps, not oversights:
 - **No local resource library browser.** Files can be imported; there is no bundled library.
 - **No `.TY` board import.** Undocumented vendor format; reading it would require reverse
   engineering, which is out of scope here.
-- **No teacher-to-student control protocol.** Undocumented and vendor-paired; see
-  `..\EClass_Win11\Spec\FINDINGS_Lab.md`.
+- **No teacher-to-student control protocol.** Undocumented and vendor-paired; the local
+  black-box lab notes are intentionally not published with this repository.
 - **Unsigned.** The signing hook is wired up in `build\publish.ps1` but no certificate is
   committed, so SmartScreen will warn on first run until one is supplied.
 

@@ -1,8 +1,9 @@
 # eClass User Guide: extracted feature set
 
-Source: `D:\eclass\EClass_ExtractedMSI\disk1\Newusersmanual.pdf` (31 pages, "eClass User Guide",
-© Tacteasy). Text was extracted with a local PDF stream decoder; a few icon captions rendered as
-garbled glyphs in the PDF font, so those entries are marked as inferred from context.
+Source: the vendor's 31-page "eClass User Guide" (© Tacteasy), examined locally and not
+committed to this repository. Text was extracted with a local PDF stream decoder; a few icon
+captions rendered as garbled glyphs in the PDF font, so those entries are marked as inferred
+from context.
 
 This is the **vendor's own documentation of intended board behavior**. It is a far better
 requirements source than reverse engineering, and it is what the remake is measured against. The
