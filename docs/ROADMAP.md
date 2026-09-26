@@ -1,7 +1,7 @@
 # zEClass: production roadmap
 
 What a classroom-ready whiteboard needs, in build order. Status reflects the code as it stands.
-**376 tests total: 375 passing, 1 conditional skip**, release build clean, self-contained x64 publish verified, installer verified.
+**389 tests total: 388 passing, 1 conditional skip**, release build clean, self-contained x64 publish verified, installer verified.
 
 ## Phase 1: editing model
 
@@ -50,7 +50,7 @@ What a classroom-ready whiteboard needs, in build order. Status reflects the cod
 | Capture (full screen, to page) | done |
 | Playback of recorded strokes, with speed and scrubbing | done |
 | Screen recorder (self-contained uncompressed AVI muxer) | done |
-| Audio recorder | not done |
+| Audio recorder | done, MCI-based WAV through winmm.dll, no codec or library to install |
 | Video player | not done: the packaged build's DirectShow-era dependencies will not run on a current image |
 | Formula library | not done |
 
@@ -95,7 +95,7 @@ Calculator, ruler, compass, set square, protractor, table sheet: all done.
 
 | Item | Status |
 |---|---|
-| Unit tests per area | done, 376 total (375 passing, 1 conditional vendor-manual skip) |
+| Unit tests per area | done, 389 total (388 passing, 1 conditional vendor-manual skip) |
 | Real hardware test matrix (IR board, capacitive panel, pen, mouse) | **not done: highest remaining risk** |
 | Keyboard-only walkthrough | not done |
 | Screen-reader pass | not done |

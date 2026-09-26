@@ -379,6 +379,7 @@ public partial class MainWindow : Window
         _gestureTimer.Stop();
         _recordTimer.Stop();
         _recorder.Stop();
+        _audio.Stop();
         Surface.CommitText();
         foreach (var tool in new Window?[]
                  {
@@ -1167,6 +1168,7 @@ public partial class MainWindow : Window
 
     private PlaybackWindow? _playback;
     private readonly ScreenRecorder _recorder = new();
+    private readonly AudioRecorder _audio = new();
     private readonly DispatcherTimer _recordTimer;
 
     private void OnPlaybackClick(object sender, RoutedEventArgs e)
@@ -1222,6 +1224,35 @@ public partial class MainWindow : Window
         StatusText.Text = "Recording. Uncompressed AVI, so expect a large file.";
     }
 
+    private void OnAudioClick(object sender, RoutedEventArgs e)
+    {
+        if (_audio.IsRecording)
+        {
+            // Elapsed is read before stopping: Stop resets the timer, so reading it after
+            // would always report a zero-length recording.
+            var elapsed = _audio.Elapsed;
+            var path = _audio.Stop();
+            AudioBtn.Content = "Audio";
+            RecordStatus.Text = path is null
+                ? "Audio recording failed. Check that a microphone is available."
+                : $"Audio saved to {Path.GetFileName(path)} ({elapsed:mm\\:ss}).";
+            return;
+        }
+
+        var folder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "zEClass");
+        var target = Path.Combine(folder,
+            $"zEClass-audio-{DateTime.Now:yyyyMMdd-HHmmss}.wav");
+        if (!_audio.Start(target))
+        {
+            RecordStatus.Text = "Could not start audio recording. Check that a microphone is available.";
+            return;
+        }
+
+        AudioBtn.Content = "Stop";
+        RecordStatus.Text = "Recording audio. Uncompressed WAV, about 10 MB per minute.";
+    }
+
     private void OnRecordTick(object? sender, EventArgs e)
     {
         if (!_recorder.CaptureFrame())
@@ -1234,6 +1265,21 @@ public partial class MainWindow : Window
     }
 
     private HardwareAcceptanceWindow? _acceptance;
+    private AboutWindow? _about;
+
+    /// <summary>Opens the About dialog with the developer credit and branding.</summary>
+    private void OnAboutClick(object sender, RoutedEventArgs e)
+    {
+        if (_about is not null && _about.IsVisible)
+        {
+            _about.Activate();
+            return;
+        }
+
+        _about = new AboutWindow { Owner = this };
+        _about.Closed += (_, _) => _about = null;
+        _about.Show();
+    }
 
     /// <summary>
     /// Opens the guided hardware acceptance run. It takes a live surface of its own, so the

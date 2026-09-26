@@ -39,6 +39,8 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
   this feature existed replays as a single moment rather than pretending to be animated.
 - Record the screen to a self-contained uncompressed AVI (10 fps, no external codec, no
   `avifil32` dependency).
+- Record classroom audio to an uncompressed WAV file through MCI (`winmm.dll`, in-box since
+  Windows 3.1), so there is nothing to install and nothing a locked-down image can refuse.
 
 **Presentation**
 - Three themes: light, dark, and a high-contrast theme for projectors and low-vision use. The
@@ -75,7 +77,7 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
       ColorPickerWindow.cs      colour picker
       MainWindow.xaml(.cs)      chrome, tool palette, file handling, wiring
       CrashLog.cs               rotating log and diagnostics export
-    tests/zEClass.Tests/         xUnit tests, 376 total
+    tests/zEClass.Tests/         xUnit tests, 389 total
     tools/IconGen/              build-time icon generator (not shipped)
     docs/                       hardware notes, extracted vendor spec, roadmap, localization
     build/publish.ps1           per-runtime self-contained publish with checksums
@@ -111,8 +113,8 @@ It is wired in two places, because they need different mechanisms:
     powershell -ExecutionPolicy Bypass -File build\publish.ps1
     powershell -ExecutionPolicy Bypass -File build\install.ps1
 
-Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 376 tests
-total: 375 passing and 1 conditional vendor-manual skip. Set `ZECLASS_VENDOR_MANUAL` to a local
+Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 389 tests
+total: 388 passing and 1 conditional vendor-manual skip. Set `ZECLASS_VENDOR_MANUAL` to a local
 vendor-manual PDF to run the remaining real-document check. The self-contained win-x64 publish launches cleanly, and `install.ps1` has been run
 end to end against a real per-user install directory, including the digitizer precheck and a
 start-and-close verification.
@@ -181,10 +183,10 @@ These are real gaps, not oversights:
   names, actions, status text and the calibration messages. Help text, the acceptance-test prompts
   and the diagnostics report are English-only. A full translation is a much larger job than the
   file count suggests.
-- **No video player or audio tools.** The vendor's packaged build depends on DirectShow-era
+- **No video player.** The vendor's packaged build depends on DirectShow-era
   components that will not run on a current Windows image.
-- **No audio recorder**, and the screen recorder has no retention policy. It writes uncompressed
-  AVI, so storage needs managing on a machine recording student work.
+- **No retention policy on recordings.** The screen recorder writes uncompressed
+  AVI and the audio recorder uncompressed WAV, so storage needs managing on a machine recording student work.
 - **No local resource library browser.** Files can be imported; there is no bundled library.
 - **No `.TY` board import.** Undocumented vendor format; reading it would require reverse
   engineering, which is out of scope here.

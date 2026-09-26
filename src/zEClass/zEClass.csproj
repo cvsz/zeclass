@@ -51,6 +51,9 @@
   <ItemGroup>
     <!-- Source of truth for the icon; regenerate with tools\IconGen. -->
     <None Include="Assets\zEClass.ico" Pack="false" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Branding artwork for the About dialog. Loaded defensively at runtime, so a missing
+         file degrades to text rather than a crash. -->
+    <None Include="Assets\*.png" Pack="false" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

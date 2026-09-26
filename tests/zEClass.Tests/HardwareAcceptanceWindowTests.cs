@@ -16,40 +16,22 @@ namespace zEClass.Tests;
 /// throws when a teacher opens it is exactly the kind of defect the acceptance run exists to
 /// catch, so it would be poor form to ship one untested.
 /// </summary>
+[Collection("WpfWindows")]
 public sealed class HardwareAcceptanceWindowTests
 {
-    private static readonly object Gate = new();
-    private static Application? _app;
+    private readonly StaUiFixture _ui;
 
-    private static void RunSta(Action action)
+    public HardwareAcceptanceWindowTests(StaUiFixture ui) => _ui = ui;
+
+    private void RunSta(Action action)
     {
-        Exception? captured = null;
-        var thread = new Thread(() =>
+        try
         {
-            try
-            {
-                lock (Gate)
-                {
-                    // WPF allows exactly one Application per AppDomain and the test host reuses
-                    // one, so create it once and reuse it. Calling new Application() per test
-                    // throws on the second, which would look like a product defect.
-                    _app ??= new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-                }
-
-                action();
-            }
-            catch (Exception ex)
-            {
-                captured = ex;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        if (captured is not null)
+            _ui.Invoke(action);
+        }
+        catch (Exception ex)
         {
-            throw new InvalidOperationException("acceptance window failed to construct", captured);
+            throw new InvalidOperationException("acceptance window failed to construct", ex);
         }
     }
 
