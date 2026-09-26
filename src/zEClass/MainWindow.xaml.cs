@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -154,6 +155,7 @@ public partial class MainWindow : Window
         CrashLog.Info($"zEClass started. OS {Environment.OSVersion} .NET {Environment.Version}");
         RefreshDigitizer();
         RestoreCalibration();
+        StartNdiCapture();
         _document.CanvasWidth = Math.Max(1, Surface.ActualWidth);
         _document.CanvasHeight = Math.Max(1, Surface.ActualHeight);
         UpdatePageText();
@@ -163,6 +165,127 @@ public partial class MainWindow : Window
         _gestureTimer.Start();
         Surface.Focus();
     }
+
+    private AppSettings _settings = new();
+    private NdiBridge? _ndi;
+
+    /// <summary>
+    /// Starts the NDI capture helper in the background when it is enabled and present. Silent
+    /// when the helper is not installed: a board without the streaming tool is a complete board,
+    /// not a broken one.
+    /// </summary>
+    private void StartNdiCapture()
+    {
+        _settings = AppSettings.Load();
+        _ndi = new NdiBridge(NdiBridge.ResolveExePath(), _settings.NdiAutoStart);
+        UpdateNdiButton();
+        if (!_settings.NdiAutoStart)
+        {
+            return;
+        }
+
+        RefreshNdiAsync();
+    }
+
+    /// <summary>
+    /// Runs the bridge off the UI thread: starting the helper plus waiting for its window to
+    /// minimize can take seconds, and startup must never hang behind it.
+    /// </summary>
+    private void RefreshNdiAsync()
+    {
+        var bridge = _ndi;
+        if (bridge is null)
+        {
+            return;
+        }
+
+        NdiBtn.IsEnabled = false;
+        Task.Run(() =>
+        {
+            var result = bridge.EnsureRunning();
+            Dispatcher.Invoke(() =>
+            {
+                switch (result)
+                {
+                    case NdiResult.Started:
+                        StatusText.Text = "NDI capture started in the background.";
+                        break;
+                    case NdiResult.Failed:
+                        StatusText.Text = bridge.LastError ?? "NDI capture could not start.";
+                        break;
+                    case NdiResult.NotFound:
+                        // Deliberately quiet beyond the button state: most machines will never have it.
+                        break;
+                }
+
+                UpdateNdiButton();
+            });
+        });
+    }
+
+    private void OnNdiChanged(object sender, RoutedEventArgs e)
+    {
+        if (_suppressNdiToggle || _ndi is null)
+        {
+            return;
+        }
+
+        if (NdiBtn.IsChecked == true)
+        {
+            _settings.NdiAutoStart = true;
+            _settings.Save();
+            RefreshNdiAsync();
+        }
+        else
+        {
+            _settings.NdiAutoStart = false;
+            _settings.Save();
+            var bridge = _ndi;
+            NdiBtn.IsEnabled = false;
+            Task.Run(() =>
+            {
+                var stopped = bridge.Stop();
+                var message = stopped ? "NDI capture stopped."
+                    : bridge.LastError ?? "NDI capture could not be stopped.";
+                Dispatcher.Invoke(() =>
+                {
+                    StatusText.Text = message;
+                    UpdateNdiButton();
+                });
+            });
+        }
+    }
+
+    /// <summary>Keeps the toggle honest: checked means actually running, not merely enabled.</summary>
+    private void UpdateNdiButton()
+    {
+        if (_ndi is null)
+        {
+            NdiBtn.IsEnabled = false;
+            return;
+        }
+
+        // Setting IsChecked fires the toggle handler, which would save settings and restart
+        // the helper as a side effect of merely displaying state. Suppressed while syncing.
+        _suppressNdiToggle = true;
+        try
+        {
+            NdiBtn.IsEnabled = _ndi.ExeFound || _ndi.IsRunning;
+            NdiBtn.IsChecked = _ndi.IsRunning;
+        }
+        finally
+        {
+            _suppressNdiToggle = false;
+        }
+
+        NdiBtn.ToolTip = !_ndi.ExeFound && !_ndi.IsRunning
+            ? $"vMix Desktop Capture was not found at {_ndi.ExePath}."
+            : _ndi.IsRunning
+                ? "NDI capture is running minimized. Uncheck to stop it."
+                : "Start the NDI capture helper minimized in the background.";
+    }
+
+    private bool _suppressNdiToggle;
 
     /// <summary>
     /// Loads the window icon from the generated .ico. WPF's XAML type converter rejects a bare
@@ -383,6 +506,9 @@ public partial class MainWindow : Window
         _recordTimer.Stop();
         _recorder.Stop();
         _audio.Stop();
+        // Supervised lifecycle: the helper was started for this board session, so it is
+        // reaped with it rather than left orphaned. It stops only our own tracked instance.
+        _ndi?.Stop();
         Surface.CommitText();
         foreach (var tool in new Window?[]
                  {

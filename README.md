@@ -41,6 +41,10 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
   `avifil32` dependency).
 - Record classroom audio to an uncompressed WAV file through MCI (`winmm.dll`, in-box since
   Windows 3.1), so there is nothing to install and nothing a locked-down image can refuse.
+- Feed the board to a streaming setup over NDI: when vMix Desktop Capture is installed, the
+  board starts it minimized in the background, supervises it (one instance, reaped on exit,
+  never touching any other process), and offers a top-bar toggle. The helper's own Minimise
+  on Startup stays the primary mechanism; the bridge is the supervisor, not a replacement.
 
 **Presentation**
 - Three themes: light, dark, and a high-contrast theme for projectors and low-vision use. The
@@ -192,6 +196,9 @@ These are real gaps, not oversights:
   engineering, which is out of scope here.
 - **No teacher-to-student control protocol.** Undocumented and vendor-paired; the local
   black-box lab notes are intentionally not published with this repository.
+- **NDI needs the vMix tool installed separately.** It is not bundled: set
+  `ZECLASS_NDI_CAPTURE` to its location when it is not at the default path, and the board
+  does nothing at all when it is absent.
 - **Unsigned.** The signing hook is wired up in `build\publish.ps1` but no certificate is
   committed, so SmartScreen will warn on first run until one is supplied.
 

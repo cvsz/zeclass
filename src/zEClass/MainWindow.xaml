@@ -355,6 +355,9 @@
             <Button x:Name="AboutBtn" Content="About" Style="{StaticResource ChromeButton}"
                     MinWidth="76" Margin="8,0,0,0" Click="OnAboutClick"
                     ToolTip="About zEClass and its developer" />
+            <ToggleButton x:Name="NdiBtn" Content="NDI" Style="{StaticResource ChromeToggle}"
+                    MinWidth="64" Margin="8,0,0,0" Checked="OnNdiChanged" Unchecked="OnNdiChanged"
+                    ToolTip="vMix Desktop Capture (NDI feed for streaming the board)" />
             <TextBlock x:Name="DigitizerText" Text="Digitizer: probing..." Margin="12,0,0,0"
                        Foreground="{StaticResource ChromeBorder}" VerticalAlignment="Center"
                        FontSize="13" />
