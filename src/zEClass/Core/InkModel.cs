@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security;
 using System.Text;
 using System.Windows;
 using System.Text.Encodings.Web;
@@ -183,6 +184,16 @@ public sealed class BoardDocument
     public const string FileExtension = ".ebboard";
     public const int FileFormatVersion = 1;
 
+    /// <summary>
+    /// Cap on the page count a file may claim. Page creation is proportional to PageCount,
+    /// so a hand-crafted file claiming two billion pages would otherwise exhaust memory
+    /// from a few hundred bytes of JSON.
+    /// </summary>
+    public const int MaxPageCount = 10_000;
+
+    /// <summary>Cap on the shape geometry or text one stroke may carry.</summary>
+    public const int MaxShapeTextChars = 100_000;
+
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "Untitled board";
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
@@ -238,6 +249,221 @@ public sealed class BoardDocument
     }
 
     public BoardPage Active() => EnsurePages().Pages[ActivePage];
+
+    /// <summary>
+    /// Repairs a document that came off disk. Board files are untrusted input: a truncated
+    /// or hand-edited file must load as a usable board instead of crashing the render loop,
+    /// and a hostile one must not claim two billion pages, embed unbounded strings, or
+    /// smuggle non-finite coordinates into WPF drawing calls that reject them.
+    /// </summary>
+    public BoardDocument Sanitize()
+    {
+        if (string.IsNullOrEmpty(Name))
+        {
+            Name = "Untitled board";
+        }
+
+        if (string.IsNullOrEmpty(Language))
+        {
+            Language = "en";
+        }
+
+        if (!double.IsFinite(CanvasWidth) || CanvasWidth <= 0)
+        {
+            CanvasWidth = 1920;
+        }
+
+        if (!double.IsFinite(CanvasHeight) || CanvasHeight <= 0)
+        {
+            CanvasHeight = 1080;
+        }
+
+        if (!double.IsFinite(ViewScale) || ViewScale <= 0)
+        {
+            ViewScale = 1.0;
+        }
+
+        if (!double.IsFinite(ViewOffsetX))
+        {
+            ViewOffsetX = 0;
+        }
+
+        if (!double.IsFinite(ViewOffsetY))
+        {
+            ViewOffsetY = 0;
+        }
+
+        if (PageTurnMode is < 0 or > 3)
+        {
+            PageTurnMode = 2;
+        }
+
+        if (PageCount < 1)
+        {
+            PageCount = 1;
+        }
+
+        if (PageCount > MaxPageCount)
+        {
+            PageCount = MaxPageCount;
+        }
+
+        Pages ??= new();
+        Pages.RemoveAll(p => p is null);
+        Pages = Pages.DistinctBy(p => p.Index).ToList();
+        Images ??= new();
+        Images.RemoveAll(i => i is null);
+        foreach (var image in Images)
+        {
+            SanitizeImage(image);
+        }
+
+        foreach (var page in Pages)
+        {
+            page.Name ??= string.Empty;
+            page.Strokes ??= new();
+            page.Strokes.RemoveAll(s => s is null);
+            page.Images ??= new();
+            page.Images.RemoveAll(i => i is null);
+            foreach (var image in page.Images)
+            {
+                SanitizeImage(image);
+            }
+
+            foreach (var stroke in page.Strokes)
+            {
+                SanitizeStroke(stroke);
+            }
+        }
+
+        return EnsurePages();
+    }
+
+    /// <summary>Deep copy used to snapshot the live document before an off-thread save.</summary>
+    public BoardDocument Clone() => new()
+    {
+        Id = Id,
+        Name = Name,
+        CreatedUtc = CreatedUtc,
+        ModifiedUtc = ModifiedUtc,
+        CanvasWidth = CanvasWidth,
+        CanvasHeight = CanvasHeight,
+        PageCount = PageCount,
+        ActivePage = ActivePage,
+        PageTurnMode = PageTurnMode,
+        AutoSaveEnabled = AutoSaveEnabled,
+        AutoSaveIntervalSeconds = AutoSaveIntervalSeconds,
+        AutoSaveAddress = AutoSaveAddress,
+        PlaybackSpeed = PlaybackSpeed,
+        RightTimeout = RightTimeout,
+        UIStyle = UIStyle,
+        Language = Language,
+        ViewScale = ViewScale,
+        ViewOffsetX = ViewOffsetX,
+        ViewOffsetY = ViewOffsetY,
+        Images = Images.Select(i => i.Clone()).ToList(),
+        Pages = Pages.Select(p => p.Clone()).ToList(),
+    };
+
+    private static void SanitizeImage(InkImage image)
+    {
+        image.SourcePath ??= string.Empty;
+        if (!double.IsFinite(image.X))
+        {
+            image.X = 0;
+        }
+
+        if (!double.IsFinite(image.Y))
+        {
+            image.Y = 0;
+        }
+
+        if (!double.IsFinite(image.Width) || image.Width < 0)
+        {
+            image.Width = 480;
+        }
+
+        if (!double.IsFinite(image.Height) || image.Height < 0)
+        {
+            image.Height = 360;
+        }
+
+        if (!double.IsFinite(image.Opacity))
+        {
+            image.Opacity = 1.0;
+        }
+
+        image.Opacity = Math.Clamp(image.Opacity, 0, 1);
+        if (!double.IsFinite(image.RotationDegrees))
+        {
+            image.RotationDegrees = 0;
+        }
+    }
+
+    private static void SanitizeStroke(InkStroke stroke)
+    {
+        if (!Enum.IsDefined(typeof(StrokeKind), stroke.Kind))
+        {
+            stroke.Kind = StrokeKind.Pen;
+        }
+
+        if (!Enum.IsDefined(typeof(LineStyle), stroke.LineStyle))
+        {
+            stroke.LineStyle = LineStyle.Solid;
+        }
+
+        if (!Enum.IsDefined(typeof(ShapeStyle), stroke.Fill))
+        {
+            stroke.Fill = ShapeStyle.Outline;
+        }
+
+        stroke.Shape ??= "line";
+        stroke.Geometry = Truncate(stroke.Geometry);
+        stroke.Text = Truncate(stroke.Text);
+        if (!double.IsFinite(stroke.Width) || stroke.Width <= 0)
+        {
+            stroke.Width = 4.0;
+        }
+
+        if (!double.IsFinite(stroke.Opacity))
+        {
+            stroke.Opacity = 1.0;
+        }
+
+        stroke.Opacity = Math.Clamp(stroke.Opacity, 0, 1);
+
+        stroke.Points ??= new();
+        stroke.Points.RemoveAll(p => p is null);
+        foreach (var point in stroke.Points)
+        {
+            if (!double.IsFinite(point.X))
+            {
+                point.X = 0;
+            }
+
+            if (!double.IsFinite(point.Y))
+            {
+                point.Y = 0;
+            }
+
+            if (!double.IsFinite(point.Pressure))
+            {
+                point.Pressure = 0;
+            }
+
+            point.Pressure = Math.Clamp(point.Pressure, 0, 1);
+            if (double.IsInfinity(point.Tilt))
+            {
+                point.Tilt = double.NaN;
+            }
+        }
+    }
+
+    private static string? Truncate(string? value) =>
+        value is null
+            ? null
+            : value.Length <= MaxShapeTextChars ? value : value[..MaxShapeTextChars];
+
 }
 
 /// <summary>
@@ -288,6 +514,13 @@ public static class BoardSerializer
         Converters = { new NaNTolerantDoubleConverter() },
     };
 
+    /// <summary>
+    /// Load ceiling in bytes. Boards reference their images by path rather than embedding
+    /// them, so a real lesson file stays small; anything past this is a mistake or an
+    /// attack and is refused before being read into memory.
+    /// </summary>
+    internal const long DefaultMaxFileSizeBytes = 256L * 1024 * 1024;
+
     public static void Save(BoardDocument doc, string path)
     {
         ArgumentNullException.ThrowIfNull(doc);
@@ -298,30 +531,77 @@ public static class BoardSerializer
 
         var tmp = path + ".tmp";
         var json = JsonSerializer.Serialize(doc, Options);
-        File.WriteAllText(tmp, json, new UTF8Encoding(false));
-        File.Move(tmp, path, overwrite: true);
+        try
+        {
+            // Write beside the target, flush to the disk, then rename over it: a crash at
+            // any point leaves either the old file or the new one, never a half-written
+            // board, and a failed write is cleaned up instead of lingering as debris.
+            using (var stream = new FileStream(tmp, FileMode.Create, FileAccess.Write,
+                                               FileShare.None))
+            {
+                using (var writer = new StreamWriter(stream, new UTF8Encoding(false),
+                                                     16 * 1024, leaveOpen: true))
+                {
+                    writer.Write(json);
+                    writer.Flush();
+                }
+
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(tmp, path, overwrite: true);
+        }
+        catch
+        {
+            try
+            {
+                File.Delete(tmp);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+
+            throw;
+        }
     }
 
-    public static BoardDocument Load(string path)
+    public static BoardDocument Load(string path) => Load(path, DefaultMaxFileSizeBytes);
+
+    internal static BoardDocument Load(string path, long maxBytes)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var length = new FileInfo(path).Length;
+        if (length > maxBytes)
+        {
+            throw new InvalidDataException(
+                $"Board file is {length} bytes; the load limit is {maxBytes} bytes.");
+        }
+
         var json = File.ReadAllText(path, Encoding.UTF8);
         var doc = JsonSerializer.Deserialize<BoardDocument>(json, Options)
                   ?? throw new InvalidDataException("Board file deserialized to null.");
-        return doc.EnsurePages();
+        return doc.Sanitize();
     }
 
-    public static bool TryLoad(string path, out BoardDocument? doc, out string? error)
+    public static bool TryLoad(string path, out BoardDocument? doc, out string? error) =>
+        TryLoad(path, DefaultMaxFileSizeBytes, out doc, out error);
+
+    internal static bool TryLoad(string path, long maxBytes, out BoardDocument? doc,
+        out string? error)
     {
         doc = null;
         error = null;
         try
         {
-            doc = Load(path);
+            doc = Load(path, maxBytes);
             return true;
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or JsonException
-                                       or UnauthorizedAccessException or NotSupportedException)
+                                       or UnauthorizedAccessException or NotSupportedException
+                                       or ArgumentException or SecurityException)
         {
             error = ex.Message;
             return false;

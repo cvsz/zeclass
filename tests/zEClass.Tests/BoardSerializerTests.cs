@@ -176,4 +176,152 @@ public sealed class BoardSerializerTests : IDisposable
         Assert.Equal(1, stroke.Points[0].X);
         Assert.Single(stroke.Points);
     }
+
+    [Fact]
+    public void TryLoad_RejectsFileOverTheSizeLimit()
+    {
+        var path = Path.Combine(_dir, "big.ebboard");
+        File.WriteAllText(path, new string('x', 2048));
+
+        var ok = BoardSerializer.TryLoad(path, 1024, out var doc, out var error);
+
+        Assert.False(ok);
+        Assert.Null(doc);
+        Assert.Contains("limit", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Load_NullPagesList_IsRepairedToAWorkingDocument()
+    {
+        var path = Path.Combine(_dir, "nullpages.ebboard");
+        File.WriteAllText(path, "{\"PageCount\":3,\"Pages\":null}");
+
+        var doc = BoardSerializer.Load(path);
+
+        Assert.Equal(3, doc.Pages.Count);
+        Assert.Equal(0, doc.ActivePage);
+        Assert.NotNull(doc.Active());
+    }
+
+    [Fact]
+    public void Load_NegativePageCount_ClampsToOnePage()
+    {
+        var path = Path.Combine(_dir, "negative.ebboard");
+        File.WriteAllText(path, "{\"PageCount\":-5,\"Pages\":[]}");
+
+        var doc = BoardSerializer.Load(path);
+
+        Assert.Equal(1, doc.PageCount);
+        Assert.NotNull(doc.Active());
+    }
+
+    [Fact]
+    public void Load_AbsurdPageCount_ClampsToCapAndStaysFast()
+    {
+        var path = Path.Combine(_dir, "absurd.ebboard");
+        File.WriteAllText(path, "{\"PageCount\":2000000000,\"Pages\":[]}");
+
+        var doc = BoardSerializer.Load(path);
+
+        Assert.Equal(BoardDocument.MaxPageCount, doc.PageCount);
+        Assert.Equal(BoardDocument.MaxPageCount, doc.Pages.Count);
+        Assert.NotNull(doc.Active());
+    }
+
+    [Fact]
+    public void Load_NullEntriesAndMissingLists_AreRepaired()
+    {
+        var path = Path.Combine(_dir, "nullentries.ebboard");
+        File.WriteAllText(path,
+            "{\"PageCount\":1,\"Images\":[null]," +
+            "\"Pages\":[{\"Index\":0,\"Strokes\":[null,{\"Kind\":99,\"Width\":-3," +
+            "\"Opacity\":9,\"Points\":null,\"Geometry\":\"ok\",\"Text\":\"t\"}]," +
+            "\"Images\":[null]}]}");
+
+        var doc = BoardSerializer.Load(path);
+
+        var page = Assert.Single(doc.Pages);
+        var stroke = Assert.Single(page.Strokes);
+        Assert.Equal(StrokeKind.Pen, stroke.Kind);
+        Assert.Equal(4.0, stroke.Width);
+        Assert.Equal(1.0, stroke.Opacity);
+        Assert.Empty(stroke.Points);
+        Assert.Empty(doc.Images);
+        Assert.Empty(page.Images);
+    }
+
+    [Fact]
+    public void Load_NonFiniteNumbers_AreSanitized()
+    {
+        var path = Path.Combine(_dir, "nonfinite.ebboard");
+        File.WriteAllText(path,
+            "{\"PageCount\":1,\"CanvasWidth\":null,\"CanvasHeight\":null,\"ViewScale\":null," +
+            "\"Pages\":[{\"Index\":0,\"Strokes\":[{\"Points\":[{\"X\":null,\"Y\":null," +
+            "\"Pressure\":null,\"Tilt\":\"\"}]}]}]}");
+
+        var doc = BoardSerializer.Load(path);
+
+        Assert.Equal(1920, doc.CanvasWidth);
+        Assert.Equal(1080, doc.CanvasHeight);
+        Assert.Equal(1.0, doc.ViewScale);
+        var point = Assert.Single(doc.Pages[0].Strokes[0].Points);
+        Assert.Equal(0, point.X);
+        Assert.Equal(0, point.Y);
+        Assert.Equal(0, point.Pressure);
+        Assert.True(double.IsNaN(point.Tilt));
+    }
+
+    [Fact]
+    public void Load_TruncatesOversizedGeometryAndText()
+    {
+        var path = Path.Combine(_dir, "huge.ebboard");
+        var big = new string('g', BoardDocument.MaxShapeTextChars + 10);
+        File.WriteAllText(path,
+            "{\"PageCount\":1,\"Pages\":[{\"Index\":0,\"Strokes\":[{\"Geometry\":\"" + big +
+            "\",\"Text\":\"" + big + "\"}]}]}");
+
+        var doc = BoardSerializer.Load(path);
+
+        var stroke = Assert.Single(doc.Pages[0].Strokes);
+        Assert.Equal(BoardDocument.MaxShapeTextChars, stroke.Geometry!.Length);
+        Assert.Equal(BoardDocument.MaxShapeTextChars, stroke.Text!.Length);
+    }
+
+    [Fact]
+    public void Save_FailureLeavesTheExistingBoardUntouched()
+    {
+        var path = Path.Combine(_dir, "guarded.ebboard");
+        BoardSerializer.Save(new BoardDocument { Name = "original" }, path);
+
+        // Occupy the temporary path so the write cannot start; the save must fail without
+        // touching the board that is already on disk.
+        Directory.CreateDirectory(path + ".tmp");
+        var ex = Record.Exception(() =>
+            BoardSerializer.Save(new BoardDocument { Name = "second" }, path));
+        Directory.Delete(path + ".tmp");
+
+        Assert.True(ex is IOException or UnauthorizedAccessException,
+            $"unexpected {ex?.GetType().FullName}: {ex?.Message}");
+        Assert.Equal("original", BoardSerializer.Load(path).Name);
+    }
+
+    [Fact]
+    public void BoardDocument_Clone_IsDeepAndIndependent()
+    {
+        var doc = new BoardDocument { Name = "live", PageCount = 2 };
+        doc.EnsurePages();
+        doc.Pages[0].Strokes.Add(new InkStroke
+        {
+            Points = { new InkPoint { X = 1, Y = 2 } },
+        });
+
+        var snapshot = doc.Clone();
+        doc.Pages[0].Strokes[0].Points[0].X = 999;
+        doc.Pages[0].Strokes.Clear();
+        doc.Name = "changed";
+
+        Assert.Equal("live", snapshot.Name);
+        Assert.Equal(1, snapshot.Pages[0].Strokes[0].Points[0].X);
+        Assert.Single(snapshot.Pages[0].Strokes);
+    }
 }

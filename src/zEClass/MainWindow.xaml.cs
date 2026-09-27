@@ -28,6 +28,14 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _gestureTimer;
     private readonly PageStrip _pageStrip = new();
     private string? _filePath;
+
+    /// <summary>Serializes autosave writes so a background copy and the exit save never
+    /// write the same file at the same time.</summary>
+    private readonly object _autoSaveGate = new();
+
+    /// <summary>Set once closing starts, so a queued background autosave cannot overwrite
+    /// the final synchronous write with a stale snapshot.</summary>
+    private volatile bool _shuttingDown;
     private bool _suppressFullScreenToggle;
     private bool _initializingPickers;
     private WindowStyle _preFullScreenStyle;
@@ -501,6 +509,7 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        _shuttingDown = true;
         _autoSaveTimer.Stop();
         _gestureTimer.Stop();
         _recordTimer.Stop();
@@ -530,7 +539,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            AutoSave();
+            AutoSaveSync();
         }
     }
 
@@ -1699,18 +1708,83 @@ public partial class MainWindow : Window
 
     private void AutoSave()
     {
+        // The timer fires on the UI thread: clone the live document here, because it keeps
+        // changing under a background reader, then hand the copy to a worker so serializing
+        // a large board cannot hitch the canvas.
+        string path;
+        BoardDocument snapshot;
         try
         {
-            var folder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "zEClass", "boards");
-            Directory.CreateDirectory(folder);
-            BoardSerializer.Save(_document, Path.Combine(folder, "autosave.ebboard"));
+            path = AutosavePath();
+            snapshot = _document.Clone();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex)
+        {
+            // The timer must never be able to take the UI loop down with it.
+            CrashLog.Write("AutoSave", ex);
+            return;
+        }
+
+        Task.Run(() =>
+        {
+            if (_shuttingDown)
+            {
+                return;
+            }
+
+            if (!Monitor.TryEnter(_autoSaveGate))
+            {
+                return;
+            }
+
+            try
+            {
+                if (_shuttingDown)
+                {
+                    return;
+                }
+
+                BoardSerializer.Save(snapshot, path);
+            }
+            catch (Exception ex)
+            {
+                // Fire and forget: an exception here would otherwise vanish unobserved.
+                CrashLog.Write("AutoSave", ex);
+            }
+            finally
+            {
+                Monitor.Exit(_autoSaveGate);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Runs on the way out, where the write must actually land before the process exits.
+    /// It waits for any in-flight background copy, then writes the current document last.
+    /// </summary>
+    private void AutoSaveSync()
+    {
+        try
+        {
+            var path = AutosavePath();
+            lock (_autoSaveGate)
+            {
+                BoardSerializer.Save(_document, path);
+            }
+        }
+        catch (Exception ex)
         {
             CrashLog.Write("AutoSave", ex);
         }
+    }
+
+    private static string AutosavePath()
+    {
+        var folder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "zEClass", "boards");
+        Directory.CreateDirectory(folder);
+        return Path.Combine(folder, "autosave.ebboard");
     }
 
     private void CopyPageImage()

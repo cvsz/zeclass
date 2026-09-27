@@ -24,7 +24,12 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
   delete / copy / settings / lock.
 - Per-page background colour and image. A background image behind a locked page is the
   vendor's "fill" pen: writing on it reveals the picture.
-- Autosave every 60 s to `%LOCALAPPDATA%\zEClass\boards\autosave.ebboard`.
+- Autosave every 60 s to `%LOCALAPPDATA%\zEClass\boards\autosave.ebboard`, serialized on a
+  background thread and written through a temporary file that is renamed into place, so a
+  crash mid-write leaves the previous copy intact. The final save runs synchronously while
+  the window closes.
+- Board files are validated on open: an oversized file is refused before it is read, and a
+  truncated or hand-edited one is repaired into a usable board instead of crashing.
 
 **Content**
 - Insert images from disk, with a missing file shown as a placeholder rather than failing the
