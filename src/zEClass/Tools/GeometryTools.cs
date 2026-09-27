@@ -289,7 +289,7 @@ public sealed class CalculatorWindow : Window
         for (var i = 0; i < 4; i++)
         {
             grid.ColumnDefinitions.Add(new ColumnDefinition
-                { Width = new GridLength(1, GridUnitType.Star) });
+            { Width = new GridLength(1, GridUnitType.Star) });
         }
 
         Content = grid;

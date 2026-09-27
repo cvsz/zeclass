@@ -57,7 +57,7 @@ public sealed class CalibrationOverlay : FrameworkElement
         _finished = false;
         _transform = null;
         _error = double.NaN;
-                InvalidateVisual();
+        InvalidateVisual();
         RaiseStateChanged();
     }
 

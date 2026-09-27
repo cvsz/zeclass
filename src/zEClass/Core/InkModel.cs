@@ -475,11 +475,11 @@ public sealed class NaNTolerantDoubleConverter : JsonConverter<double>
 {
     public override double Read(ref Utf8JsonReader reader, Type typeToConvert,
         JsonSerializerOptions options) => reader.TokenType switch
-    {
-        JsonTokenType.Number => reader.GetDouble(),
-        JsonTokenType.Null or JsonTokenType.String => double.NaN,
-        _ => double.NaN,
-    };
+        {
+            JsonTokenType.Number => reader.GetDouble(),
+            JsonTokenType.Null or JsonTokenType.String => double.NaN,
+            _ => double.NaN,
+        };
 
     public override void Write(Utf8JsonWriter writer, double value, JsonSerializerOptions options)
     {

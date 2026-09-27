@@ -542,13 +542,21 @@ public sealed partial class HardwareAcceptanceWindow : Window
 
         _target.Children.Add(new Line
         {
-            X1 = cx - 60, Y1 = cy, X2 = cx + 60, Y2 = cy,
-            Stroke = new SolidColorBrush(Color.FromRgb(0x4C, 0xC9, 0xF0)), StrokeThickness = 3,
+            X1 = cx - 60,
+            Y1 = cy,
+            X2 = cx + 60,
+            Y2 = cy,
+            Stroke = new SolidColorBrush(Color.FromRgb(0x4C, 0xC9, 0xF0)),
+            StrokeThickness = 3,
         });
         _target.Children.Add(new Line
         {
-            X1 = cx, Y1 = cy - 60, X2 = cx, Y2 = cy + 60,
-            Stroke = new SolidColorBrush(Color.FromRgb(0x4C, 0xC9, 0xF0)), StrokeThickness = 3,
+            X1 = cx,
+            Y1 = cy - 60,
+            X2 = cx,
+            Y2 = cy + 60,
+            Stroke = new SolidColorBrush(Color.FromRgb(0x4C, 0xC9, 0xF0)),
+            StrokeThickness = 3,
         });
 
         foreach (var (x, y) in _hits)

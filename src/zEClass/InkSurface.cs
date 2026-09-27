@@ -865,23 +865,23 @@ public sealed class InkSurface : FrameworkElement
         switch (recognition.Shape)
         {
             case RecognizedShape.Circle:
-            {
-                var circle = ShapeRecognizer.CircleFrom(stroke.Points);
-                SpotlightRequested?.Invoke(this, circle.Center);
-                SetStatus($"Circle recognised: spotlight at ({circle.Center.X:F0}, " +
-                          $"{circle.Center.Y:F0})");
-                break;
-            }
+                {
+                    var circle = ShapeRecognizer.CircleFrom(stroke.Points);
+                    SpotlightRequested?.Invoke(this, circle.Center);
+                    SetStatus($"Circle recognised: spotlight at ({circle.Center.X:F0}, " +
+                              $"{circle.Center.Y:F0})");
+                    break;
+                }
 
             case RecognizedShape.Square:
-            {
-                var (a, b, _, d) = ShapeRecognizer.SquareFrom(stroke.Points);
-                var rect = new System.Windows.Rect(a, new System.Windows.Point(
-                    Math.Max(b.X, d.X), Math.Max(b.Y, d.Y)));
-                MagnifierRegionRequested?.Invoke(this, rect);
-                SetStatus($"Square recognised: magnifier over {rect.Width:F0}x{rect.Height:F0}");
-                break;
-            }
+                {
+                    var (a, b, _, d) = ShapeRecognizer.SquareFrom(stroke.Points);
+                    var rect = new System.Windows.Rect(a, new System.Windows.Point(
+                        Math.Max(b.X, d.X), Math.Max(b.Y, d.Y)));
+                    MagnifierRegionRequested?.Invoke(this, rect);
+                    SetStatus($"Square recognised: magnifier over {rect.Width:F0}x{rect.Height:F0}");
+                    break;
+                }
 
             default:
                 SetStatus($"{recognition.Shape} recognised ({recognition.Confidence:P0})");
@@ -911,7 +911,7 @@ public sealed class InkSurface : FrameworkElement
 
     private void HandleGesture(GestureKind gesture)
     {
-                switch (gesture)
+        switch (gesture)
         {
             case GestureKind.FistErase:
                 // Held fist becomes an eraser until the contact lifts.

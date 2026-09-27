@@ -93,12 +93,12 @@ public sealed class PointerNativeTests
 
     private static PointerNative.PointerInfo Info(
         PointerInputType type, uint id, uint flags, int x = 100, int y = 50) => new()
-    {
-        PointerType = type,
-        PointerId = id,
-        PointerFlags = (PointerNative.PointerFlags)flags,
-        PtPixelLocation = new PointerNative.NativePoint { X = x, Y = y },
-    };
+        {
+            PointerType = type,
+            PointerId = id,
+            PointerFlags = (PointerNative.PointerFlags)flags,
+            PtPixelLocation = new PointerNative.NativePoint { X = x, Y = y },
+        };
 
     [Fact]
     public void Parse_MouseSample_ReadsPositionAndContactFlags()

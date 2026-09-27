@@ -379,8 +379,11 @@ public sealed class Locator
                 "The English catalogue is empty; the static initializer order is wrong.");
         }
 
-        _catalogues["en"] = new Strings { Values = new Dictionary<string, string>(
-            BuiltInEnglish, StringComparer.Ordinal) };
+        _catalogues["en"] = new Strings
+        {
+            Values = new Dictionary<string, string>(
+            BuiltInEnglish, StringComparer.Ordinal)
+        };
     }
 
     public static Locator Current => _current;

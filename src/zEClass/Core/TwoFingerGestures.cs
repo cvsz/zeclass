@@ -167,50 +167,50 @@ public sealed class TwoFingerGestureRecognizer
         switch (mode)
         {
             case GestureKind.Scale:
-            {
-                if (_start.Distance < MinSeparation || current.Distance < MinSeparation)
                 {
-                    return null;
-                }
+                    if (_start.Distance < MinSeparation || current.Distance < MinSeparation)
+                    {
+                        return null;
+                    }
 
-                var scale = current.Distance / _start.Distance;
-                if (Math.Abs(scale - 1) < PinchThreshold)
-                {
-                    return null;
-                }
+                    var scale = current.Distance / _start.Distance;
+                    if (Math.Abs(scale - 1) < PinchThreshold)
+                    {
+                        return null;
+                    }
 
-                _committed = true;
-                return new TwoFingerGesture(GestureKind.Scale, current.Cx, current.Cy, scale, 0);
-            }
+                    _committed = true;
+                    return new TwoFingerGesture(GestureKind.Scale, current.Cx, current.Cy, scale, 0);
+                }
 
             case GestureKind.Rotate:
-            {
-                var delta = NormalizeDegrees(current.AngleDegrees - _start.AngleDegrees);
-                if (Math.Abs(delta) < RotateThresholdDegrees)
                 {
-                    return null;
-                }
+                    var delta = NormalizeDegrees(current.AngleDegrees - _start.AngleDegrees);
+                    if (Math.Abs(delta) < RotateThresholdDegrees)
+                    {
+                        return null;
+                    }
 
-                _committed = true;
-                return new TwoFingerGesture(GestureKind.Rotate, current.Cx, current.Cy, 1, delta);
-            }
+                    _committed = true;
+                    return new TwoFingerGesture(GestureKind.Rotate, current.Cx, current.Cy, 1, delta);
+                }
 
             case GestureKind.None:
-            {
-                var dx = current.Cx - _start.Cx;
-                var dy = current.Cy - _start.Cy;
-                if (Math.Sqrt((dx * dx) + (dy * dy)) < PanThreshold)
                 {
-                    return null;
-                }
+                    var dx = current.Cx - _start.Cx;
+                    var dy = current.Cy - _start.Cy;
+                    if (Math.Sqrt((dx * dx) + (dy * dy)) < PanThreshold)
+                    {
+                        return null;
+                    }
 
-                _committed = true;
-                return new TwoFingerGesture(GestureKind.Pan, current.Cx, current.Cy, 1, 0)
-                {
-                    DeltaX = dx,
-                    DeltaY = dy,
-                };
-            }
+                    _committed = true;
+                    return new TwoFingerGesture(GestureKind.Pan, current.Cx, current.Cy, 1, 0)
+                    {
+                        DeltaX = dx,
+                        DeltaY = dy,
+                    };
+                }
         }
 
         return null;
