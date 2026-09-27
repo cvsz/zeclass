@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "تم التعرف على دائرة: إضاءة.",
     "msg.recognitionSquare": "تم التعرف على مربع: عدسة مكبرة.",
     "msg.pageLocked": "هذه الصفحة مقفلة. افتح القفل قبل المسح.",
-    "import.failed": "تعذر استيراد أي شيء."
+    "import.failed": "تعذر استيراد أي شيء.",
+    "tool.image": "صورة",
+    "tool.pinch": "قرص",
+    "tool.shapes": "أشكال",
+    "section.ink": "حبر",
+    "section.line": "خط",
+    "section.fill": "تعبئة",
+    "section.theme": "سمة",
+    "section.language": "لغة",
+    "action.record": "تسجيل",
+    "action.stop": "إيقاف",
+    "action.audio": "صوت",
+    "action.playback": "تشغيل",
+    "action.acceptance": "اختبار القبول",
+    "action.about": "عن",
+    "page.prev": "السابق",
+    "page.next": "التالي",
+    "page.add": "+ صفحة",
+    "action.fit": "ملاءمة",
+    "status.ready": "جاهز",
+    "doc.untitled": "بدون عنوان"
   }
 }

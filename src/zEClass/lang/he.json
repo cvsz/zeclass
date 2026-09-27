@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "זוהה עיגול: זרקן.",
     "msg.recognitionSquare": "זוהה ריבוע: זכוכית מגדילה.",
     "msg.pageLocked": "עמוד זה נעול. יש לשחרר את הנעילה לפני הניקוי.",
-    "import.failed": "לא ניתן לייבא דבר."
+    "import.failed": "לא ניתן לייבא דבר.",
+    "tool.image": "תמונה",
+    "tool.pinch": "צביטה",
+    "tool.shapes": "צורות",
+    "section.ink": "דיו",
+    "section.line": "קו",
+    "section.fill": "מילוי",
+    "section.theme": "נושא",
+    "section.language": "שפה",
+    "action.record": "הקלטה",
+    "action.stop": "עצירה",
+    "action.audio": "שמע",
+    "action.playback": "ניגון",
+    "action.acceptance": "מבחן קבלה",
+    "action.about": "אודות",
+    "page.prev": "הקודם",
+    "page.next": "הבא",
+    "page.add": "+ עמוד",
+    "action.fit": "התאמה",
+    "status.ready": "מוכן",
+    "doc.untitled": "ללא כותרת"
   }
 }

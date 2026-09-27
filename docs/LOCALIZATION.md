@@ -7,7 +7,7 @@
 `Locator.BuiltInEnglish` is the source of truth, defined in code so the app still has a usable
 catalogue if every file is deleted. A `lang\*.json` file is *layered over* it, not substituted for
 it, so a partial translation degrades one word at a time instead of blanking every untranslated
-label. That is the property that makes a 48-key catalogue maintainable by hand.
+label. That is the property that makes a 67-key catalogue maintainable by hand.
 
 `LanguageCatalog` is a static table of what the app knows about each language. It exists for two
 reasons the JSON files cannot answer: the picker should show `Deutsch` rather than `de`, and a
@@ -37,7 +37,7 @@ hidden, in case one was dropped in by hand.
 The file must be UTF-8 **without a BOM**. Save it as plain UTF-8; a test enforces this, because a
 BOM makes the first key unparseable by some readers and a mis-encoded file shows mojibake.
 
-Every catalogue must carry all 48 keys. English is the fallback, so a key you leave out still
+Every catalogue must carry all 67 keys. English is the fallback, so a key you leave out still
 renders, it just renders in English, which is a worse experience than a translation and is flagged
 as a missing key by the audit.
 
@@ -72,8 +72,9 @@ ever gets a real translation, delete the entry and the audit starts checking it 
 - **No native-speaker review.** The 24 catalogues were produced without one. The audit proves
   nothing is missing, mistyped or untranslated; it cannot prove the wording is idiomatic. Get them
   checked before classroom deployment.
-- **Only about 48 strings are covered**: tool names, actions, status text and the calibration
-  messages. Help text, the hardware acceptance prompts and the diagnostics report are English-only.
+- **Only 67 strings are covered**: tool names, actions, ribbon section labels, the page bar, the
+  top bar, the status line and the calibration messages. Help text, context menus, transient status
+  messages, the hardware acceptance prompts and the diagnostics report are English-only.
 - **No Traditional Chinese.** `zh-TW` resolves to `zh-Hans`, which is documented in `Resolve` rather
   than silently substituted, but it is still the wrong script for a Traditional Chinese classroom.
 - **No Persian or Urdu** despite both being right-to-left, so `RightToLeft` has only Arabic and

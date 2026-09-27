@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Розпізнано коло: прожектор.",
     "msg.recognitionSquare": "Розпізнано квадрат: лупа.",
     "msg.pageLocked": "Цю сторінку заблоковано. Розблокуйте її перед очищенням.",
-    "import.failed": "Не вдалося імпортувати нічого."
+    "import.failed": "Не вдалося імпортувати нічого.",
+    "tool.image": "Зображення",
+    "tool.pinch": "Щипок",
+    "tool.shapes": "Фігури",
+    "section.ink": "Чорнило",
+    "section.line": "Лінія",
+    "section.fill": "Заливка",
+    "section.theme": "Тема",
+    "section.language": "Мова",
+    "action.record": "Запис",
+    "action.stop": "Стоп",
+    "action.audio": "Аудіо",
+    "action.playback": "Відтворити",
+    "action.acceptance": "Приймальний тест",
+    "action.about": "Про програму",
+    "page.prev": "Назад",
+    "page.next": "Далі",
+    "page.add": "+ Сторінка",
+    "action.fit": "Вписати",
+    "status.ready": "Готово",
+    "doc.untitled": "Без назви"
   }
 }

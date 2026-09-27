@@ -1,7 +1,7 @@
 # zEClass: production roadmap
 
 What a classroom-ready whiteboard needs, in build order. Status reflects the code as it stands.
-**397 tests total: 396 passing, 1 conditional skip**, release build clean, self-contained x64 publish verified, installer verified.
+**428 tests total: 427 passing, 1 conditional skip**, release build clean, self-contained x64 publish verified, installer verified.
 
 ## Phase 1: editing model
 
@@ -72,7 +72,7 @@ Calculator, ruler, compass, set square, protractor, table sheet: all done.
 | Email the board as a package | done, zips the board and opens a draft |
 | Local resources and built-in library browser | not done |
 | Localization | done: 25 languages, per-key English fallback, native names, RTL mirroring for ar/he, and a build-time audit that fails on missing keys, dropped `{0}` placeholders, or an untranslated copy of English. See `LOCALIZATION.md` |
-| 20 languages | interface strings covered; help text and the acceptance prompts are still English-only, and no catalogue has native-speaker review |
+| 20 languages | superseded by 25; the 67-key catalogue now covers the toolbar, ribbon section labels, page bar, top bar and status line, but help text, context menus, acceptance prompts and transient status messages are still English-only, and no catalogue has native-speaker review |
 
 ## Phase 7: production hardening
 
@@ -95,7 +95,7 @@ Calculator, ruler, compass, set square, protractor, table sheet: all done.
 
 | Item | Status |
 |---|---|
-| Unit tests per area | done, 397 total (396 passing, 1 conditional vendor-manual skip) |
+| Unit tests per area | done, 428 total (427 passing, 1 conditional vendor-manual skip) |
 | Real hardware test matrix (IR board, capacitive panel, pen, mouse) | **not done: highest remaining risk** |
 | Keyboard-only walkthrough | not done |
 | Screen-reader pass | not done |

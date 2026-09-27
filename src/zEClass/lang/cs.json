@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Rozpoznán kruh: reflektor.",
     "msg.recognitionSquare": "Rozpoznán čtverec: lupa.",
     "msg.pageLocked": "Tato stránka je zamčená. Před vymazáním ji odemkněte.",
-    "import.failed": "Nepodařilo se importovat nic."
+    "import.failed": "Nepodařilo se importovat nic.",
+    "tool.image": "Obrázek",
+    "tool.pinch": "Zoom",
+    "tool.shapes": "Tvary",
+    "section.ink": "Inkoust",
+    "section.line": "Čára",
+    "section.fill": "Výplň",
+    "section.theme": "Motiv",
+    "section.language": "Jazyk",
+    "action.record": "Nahrávat",
+    "action.stop": "Zastavit",
+    "action.audio": "Zvuk",
+    "action.playback": "Přehrát",
+    "action.acceptance": "Akceptační test",
+    "action.about": "O aplikaci",
+    "page.prev": "Zpět",
+    "page.next": "Další",
+    "page.add": "+ Strana",
+    "action.fit": "Přizpůsobit",
+    "status.ready": "Připraveno",
+    "doc.untitled": "Bez názvu"
   }
 }

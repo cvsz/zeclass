@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Rozpoznano okrąg: reflektor.",
     "msg.recognitionSquare": "Rozpoznano kwadrat: lupa.",
     "msg.pageLocked": "Ta strona jest zablokowana. Odblokuj ją przed wyczyszczeniem.",
-    "import.failed": "Nie udało się niczego zaimportować."
+    "import.failed": "Nie udało się niczego zaimportować.",
+    "tool.image": "Obraz",
+    "tool.pinch": "Zoom",
+    "tool.shapes": "Kształty",
+    "section.ink": "Atrament",
+    "section.line": "Linia",
+    "section.fill": "Wypełnienie",
+    "section.theme": "Motyw",
+    "section.language": "Język",
+    "action.record": "Nagrywaj",
+    "action.stop": "Zatrzymaj",
+    "action.audio": "Dźwięk",
+    "action.playback": "Odtwórz",
+    "action.acceptance": "Test akceptacyjny",
+    "action.about": "O programie",
+    "page.prev": "Poprzednia",
+    "page.next": "Następna",
+    "page.add": "+ Strona",
+    "action.fit": "Dopasuj",
+    "status.ready": "Gotowe",
+    "doc.untitled": "Bez tytułu"
   }
 }

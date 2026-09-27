@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Cercle reconnu : projecteur.",
     "msg.recognitionSquare": "Carre reconnu : loupe.",
     "msg.pageLocked": "Cette page est verrouillee. Deverrouillez-la avant d'effacer.",
-    "import.failed": "Rien n'a pu etre importe."
+    "import.failed": "Rien n'a pu etre importe.",
+    "tool.image": "Image",
+    "tool.pinch": "Pincer",
+    "tool.shapes": "Formes",
+    "section.ink": "Encre",
+    "section.line": "Ligne",
+    "section.fill": "Remplissage",
+    "section.theme": "Thème",
+    "section.language": "Langue",
+    "action.record": "Enregistrer l'écran",
+    "action.stop": "Arrêter",
+    "action.audio": "Audio",
+    "action.playback": "Relire",
+    "action.acceptance": "Test de réception",
+    "action.about": "À propos",
+    "page.prev": "Précédent",
+    "page.next": "Suivant",
+    "page.add": "+ Page",
+    "action.fit": "Ajuster",
+    "status.ready": "Prêt",
+    "doc.untitled": "Sans titre"
   }
 }

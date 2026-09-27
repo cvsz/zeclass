@@ -81,7 +81,7 @@ the board surface of the legacy EClass 1.0.5 product, using no vendor code.
       ColorPickerWindow.cs      colour picker
       MainWindow.xaml(.cs)      chrome, tool palette, file handling, wiring
       CrashLog.cs               rotating log and diagnostics export
-    tests/zEClass.Tests/         xUnit tests, 397 total
+    tests/zEClass.Tests/         xUnit tests, 428 total
     tools/IconGen/              build-time icon generator (not shipped)
     docs/                       hardware notes, extracted vendor spec, roadmap, localization
     build/publish.ps1           per-runtime self-contained publish with checksums
@@ -116,8 +116,8 @@ It is wired in two places, because they need different mechanisms:
     powershell -ExecutionPolicy Bypass -File build\publish.ps1
     powershell -ExecutionPolicy Bypass -File build\install.ps1
 
-Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 397 tests
-total: 396 passing and 1 conditional vendor-manual skip. Set `ZECLASS_VENDOR_MANUAL` to a local
+Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 428 tests
+total: 427 passing and 1 conditional vendor-manual skip. Set `ZECLASS_VENDOR_MANUAL` to a local
 vendor-manual PDF to run the remaining real-document check. The self-contained win-x64 publish launches cleanly, and `install.ps1` has been run
 end to end against a real per-user install directory, including the digitizer precheck and a
 start-and-close verification.
@@ -182,10 +182,11 @@ These are real gaps, not oversights:
   technically right and not idiomatic. Treat them as a reviewed-once-needed starting point, and get
   them checked before classroom deployment. Adding or fixing a language is a JSON edit in
   `src\zEClass\lang` plus an entry in `LanguageCatalog`.
-- **Only the toolbar and action strings are translated.** The catalogue covers roughly 48 keys: tool
-  names, actions, status text and the calibration messages. Help text, the acceptance-test prompts
-  and the diagnostics report are English-only. A full translation is a much larger job than the
-  file count suggests.
+- **Not every string on screen is translated.** The catalogue covers 67 keys: tool names,
+  actions, the ribbon section labels, the page bar, the top bar, the status line and the
+  calibration messages. Help text, context menus, the acceptance-test prompts, the diagnostics
+  report and the transient status messages are English-only. A full translation is a much larger
+  job than the file count suggests.
 - **No video player.** The vendor's packaged build depends on DirectShow-era
   components that will not run on a current Windows image.
 - **No retention policy on recordings.** The screen recorder writes uncompressed

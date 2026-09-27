@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Cirkel genkendt: spotlys.",
     "msg.recognitionSquare": "Firkant genkendt: forstørrelse.",
     "msg.pageLocked": "Denne side er låst. Lås den op, før du rydder.",
-    "import.failed": "Der kunne ikke importeres noget."
+    "import.failed": "Der kunne ikke importeres noget.",
+    "tool.image": "Billede",
+    "tool.pinch": "Zoom",
+    "tool.shapes": "Former",
+    "section.ink": "Blæk",
+    "section.line": "Linje",
+    "section.fill": "Fyld",
+    "section.theme": "Tema",
+    "section.language": "Sprog",
+    "action.record": "Optag",
+    "action.stop": "Stop",
+    "action.audio": "Lyd",
+    "action.playback": "Afspil",
+    "action.acceptance": "Accepttest",
+    "action.about": "Om",
+    "page.prev": "Forrige",
+    "page.next": "Næste",
+    "page.add": "+ Side",
+    "action.fit": "Tilpas",
+    "status.ready": "Klar",
+    "doc.untitled": "Unavngivet"
   }
 }

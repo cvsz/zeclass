@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Kör felismerve: fénysugár.",
     "msg.recognitionSquare": "Négyzet felismerve: nagyító.",
     "msg.pageLocked": "Ez az oldal zárolva van. Oldd fel a zárolást törlés előtt.",
-    "import.failed": "Semmit sem sikerült importálni."
+    "import.failed": "Semmit sem sikerült importálni.",
+    "tool.image": "Kép",
+    "tool.pinch": "Csippentés",
+    "tool.shapes": "Alakzatok",
+    "section.ink": "Tinta",
+    "section.line": "Vonal",
+    "section.fill": "Kitöltés",
+    "section.theme": "Téma",
+    "section.language": "Nyelv",
+    "action.record": "Felvétel",
+    "action.stop": "Leállítás",
+    "action.audio": "Hang",
+    "action.playback": "Lejátszás",
+    "action.acceptance": "Elfogadási teszt",
+    "action.about": "Névjegy",
+    "page.prev": "Előző",
+    "page.next": "Következő",
+    "page.add": "+ Oldal",
+    "action.fit": "Illesztés",
+    "status.ready": "Kész",
+    "doc.untitled": "Névtelen"
   }
 }

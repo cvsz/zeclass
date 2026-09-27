@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "จดจำวงกลมได้: สปอตไลต์",
     "msg.recognitionSquare": "จดจำสี่เหลี่ยมได้: แว่นขยาย",
     "msg.pageLocked": "หน้านี้ถูกล็อก กรุณาปลดล็อกก่อนล้าง",
-    "import.failed": "ไม่สามารถนำเข้าอะไรได้"
+    "import.failed": "ไม่สามารถนำเข้าอะไรได้",
+    "tool.image": "รูปภาพ",
+    "tool.pinch": "ซูม",
+    "tool.shapes": "รูปร่าง",
+    "section.ink": "หมึก",
+    "section.line": "เส้น",
+    "section.fill": "เติมสี",
+    "section.theme": "ธีม",
+    "section.language": "ภาษา",
+    "action.record": "อัดหน้าจอ",
+    "action.stop": "หยุด",
+    "action.audio": "เสียง",
+    "action.playback": "เล่นซ้ำ",
+    "action.acceptance": "ทดสอบรับงาน",
+    "action.about": "เกี่ยวกับ",
+    "page.prev": "ก่อนหน้า",
+    "page.next": "ถัดไป",
+    "page.add": "+ หน้า",
+    "action.fit": "พอดีจอ",
+    "status.ready": "พร้อม",
+    "doc.untitled": "ไม่มีชื่อ"
   }
 }

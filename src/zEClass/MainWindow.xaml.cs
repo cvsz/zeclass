@@ -907,7 +907,7 @@ public partial class MainWindow : Window
 
     private void UpdatePageText()
     {
-        PageText.Text = $"Page {_document.ActivePage + 1} / {_document.PageCount}";
+        PageText.Text = Locator.Format("status.page", _document.ActivePage + 1, _document.PageCount);
         BuildPageStrip();
     }
 
@@ -1331,7 +1331,7 @@ public partial class MainWindow : Window
         {
             var path = _recorder.Stop();
             _recordTimer.Stop();
-            RecordBtn.Content = "Record";
+            RecordBtn.Content = Locator.T("action.record");
             StatusText.Text = path is null
                 ? "Recording stopped with no frames captured."
                 : $"Recording saved to {Path.GetFileName(path)}.";
@@ -1349,7 +1349,7 @@ public partial class MainWindow : Window
         }
 
         _recordTimer.Start();
-        RecordBtn.Content = "Stop";
+        RecordBtn.Content = Locator.T("action.stop");
         StatusText.Text = "Recording. Uncompressed AVI, so expect a large file.";
     }
 
@@ -1361,7 +1361,7 @@ public partial class MainWindow : Window
             // would always report a zero-length recording.
             var elapsed = _audio.Elapsed;
             var path = _audio.Stop();
-            AudioBtn.Content = "Audio";
+            AudioBtn.Content = Locator.T("action.audio");
             RecordStatus.Text = path is null
                 ? "Audio recording failed. Check that a microphone is available."
                 : $"Audio saved to {Path.GetFileName(path)} ({elapsed:mm\\:ss}).";
@@ -1378,7 +1378,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        AudioBtn.Content = "Stop";
+        AudioBtn.Content = Locator.T("action.stop");
         RecordStatus.Text = "Recording audio. Uncompressed WAV, about 10 MB per minute.";
     }
 
@@ -1518,7 +1518,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void RefreshLocalizedText()
     {
-        DocNameText.Text = _document.Name;
+        UpdateDocNameText();
         PenBtn.Content = Locator.T("tool.pen");
         HighlighterBtn.Content = Locator.T("tool.highlighter");
         EraserBtn.Content = Locator.T("tool.eraser");
@@ -1529,12 +1529,15 @@ public partial class MainWindow : Window
         ArrowBtn.Content = Locator.T("tool.arrow");
         StarBtn.Content = Locator.T("tool.star");
         TextBtn.Content = Locator.T("tool.text");
+        PinchToggle.Content = Locator.T("tool.pinch");
+        RecognitionToggle.Content = Locator.T("tool.shapes");
         SelectBtn.Content = Locator.T("tool.select");
         LassoBtn.Content = Locator.T("tool.lasso");
         PanBtn.Content = Locator.T("tool.pan");
         UndoBtn.Content = Locator.T("action.undo");
         RedoBtn.Content = Locator.T("action.redo");
         ClearBtn.Content = Locator.T("action.clear");
+        ImageBtn.Content = Locator.T("tool.image");
         NewBtn.Content = Locator.T("action.new");
         OpenBtn.Content = Locator.T("action.open");
         ImportBtn.Content = Locator.T("action.import");
@@ -1547,8 +1550,47 @@ public partial class MainWindow : Window
         CalibrateBtn.Content = Locator.T("action.align");
         DiagBtn.Content = Locator.T("action.diagnostics");
         ExportDiagBtn.Content = Locator.T("action.saveReport");
+        AcceptanceBtn.Content = Locator.T("action.acceptance");
+        AboutBtn.Content = Locator.T("action.about");
+        MagnifierBtn.Content = Locator.T("tool.magnifier");
+        SpotlightBtn.Content = Locator.T("tool.spotlight");
+        CurtainBtn.Content = Locator.T("tool.curtain");
+        ClockBtn.Content = Locator.T("tool.clock");
+        KeyboardBtn.Content = Locator.T("tool.keyboard");
+        CaptureBtn.Content = Locator.T("tool.capture");
+        PlaybackBtn.Content = Locator.T("action.playback");
+        RecordBtn.Content = _recorder.IsRecording
+            ? Locator.T("action.stop") : Locator.T("action.record");
+        AudioBtn.Content = _audio.IsRecording
+            ? Locator.T("action.stop") : Locator.T("action.audio");
+        InkLabel.Text = Locator.T("section.ink");
+        LineLabel.Text = Locator.T("section.line");
+        FillLabel.Text = Locator.T("section.fill");
+        ThemeLabel.Text = Locator.T("section.theme");
+        LanguageLabel.Text = Locator.T("section.language");
+        PrevPageBtn.Content = "◀ " + Locator.T("page.prev");
+        NextPageBtn.Content = Locator.T("page.next") + " ▶";
+        AddPageBtn.Content = Locator.T("page.add");
+        ZoomResetBtn.Content = Locator.T("action.fit");
         Title = Locator.T("app.title");
+
+        // Set the page label directly instead of calling UpdatePageText(): the latter rebuilds
+        // the thumbnail strip, which is not safe before Surface.Document exists at startup.
+        PageText.Text = Locator.Format("status.page", _document.ActivePage + 1, _document.PageCount);
+        UpdateStatus();
     }
+
+    /// <summary>
+    /// Shows the translated "untitled" name for a board that has never been saved, and the
+    /// real file name otherwise. A document name is user content once saved; only the default
+    /// is localizable.
+    /// </summary>
+    private string DisplayDocumentName() =>
+        string.IsNullOrEmpty(_filePath) && _document.Name == "Untitled board"
+            ? Locator.T("doc.untitled")
+            : _document.Name;
+
+    private void UpdateDocNameText() => DocNameText.Text = DisplayDocumentName();
 
     private void OnNewClick(object sender, RoutedEventArgs e)
     {
@@ -1562,7 +1604,7 @@ public partial class MainWindow : Window
         _document.EnsurePages();
         _filePath = null;
         Surface.History.Clear();
-        DocNameText.Text = _document.Name;
+        UpdateDocNameText();
         RebindSurface();
         UpdatePageText();
         UpdateStatus();
@@ -1585,7 +1627,7 @@ public partial class MainWindow : Window
             _document = doc!;
             _filePath = dialog.FileName;
             Surface.History.Clear();
-            DocNameText.Text = _document.Name;
+            UpdateDocNameText();
             RebindSurface();
             UpdatePageText();
             UpdateZoomText();
@@ -1629,7 +1671,7 @@ public partial class MainWindow : Window
 
         _filePath = dialog.FileName;
         _document.Name = Path.GetFileNameWithoutExtension(_filePath);
-        DocNameText.Text = _document.Name;
+        UpdateDocNameText();
         Surface.CommitText();
         TrySave(_filePath);
         UpdateStatus();
@@ -1814,9 +1856,9 @@ public partial class MainWindow : Window
         var selection = Surface.Selection;
         var parts = new List<string>
         {
-            _document.Name,
-            $"page {_document.ActivePage + 1}/{_document.PageCount}",
-            $"{strokes} stroke{(strokes == 1 ? "" : "s")}",
+            DisplayDocumentName(),
+            Locator.Format("status.page", _document.ActivePage + 1, _document.PageCount),
+            Locator.Format("status.strokes", strokes),
         };
 
         if (page.Images.Count > 0)
@@ -1831,12 +1873,12 @@ public partial class MainWindow : Window
 
         if (page.Locked)
         {
-            parts.Add("locked");
+            parts.Add(Locator.T("status.locked"));
         }
 
         if (Surface.IsCalibrated)
         {
-            parts.Add("calibrated");
+            parts.Add(Locator.T("status.calibrated"));
         }
 
         if (Surface.StatusMessage is { } message)

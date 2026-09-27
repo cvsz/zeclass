@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Ympyrä tunnistettu: valokeila.",
     "msg.recognitionSquare": "Neliö tunnistettu: suurennus.",
     "msg.pageLocked": "Tämä sivu on lukittu. Avaa lukitus ennen tyhjentämistä.",
-    "import.failed": "Mitään ei voitu tuoda."
+    "import.failed": "Mitään ei voitu tuoda.",
+    "tool.image": "Kuva",
+    "tool.pinch": "Zoomaus",
+    "tool.shapes": "Muodot",
+    "section.ink": "Muste",
+    "section.line": "Viiva",
+    "section.fill": "Täyttö",
+    "section.theme": "Teema",
+    "section.language": "Kieli",
+    "action.record": "Nauhoita",
+    "action.stop": "Pysäytä",
+    "action.audio": "Ääni",
+    "action.playback": "Toista",
+    "action.acceptance": "Hyväksyntätesti",
+    "action.about": "Tietoa",
+    "page.prev": "Edellinen",
+    "page.next": "Seuraava",
+    "page.add": "+ Sivu",
+    "action.fit": "Sovita",
+    "status.ready": "Valmis",
+    "doc.untitled": "Nimetön"
   }
 }

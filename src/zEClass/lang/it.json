@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Cerchio riconosciuto: riflettore.",
     "msg.recognitionSquare": "Quadrato riconosciuto: lente.",
     "msg.pageLocked": "Questa pagina e bloccata. Sbloccarla prima di cancellare.",
-    "import.failed": "Non e stato possibile importare nulla."
+    "import.failed": "Non e stato possibile importare nulla.",
+    "tool.image": "Immagine",
+    "tool.pinch": "Pizzico",
+    "tool.shapes": "Forme",
+    "section.ink": "Inchiostro",
+    "section.line": "Linea",
+    "section.fill": "Riempimento",
+    "section.theme": "Tema",
+    "section.language": "Lingua",
+    "action.record": "Registra",
+    "action.stop": "Interrompi",
+    "action.audio": "Audio",
+    "action.playback": "Riproduci",
+    "action.acceptance": "Test di accettazione",
+    "action.about": "Informazioni",
+    "page.prev": "Precedente",
+    "page.next": "Successiva",
+    "page.add": "+ Pagina",
+    "action.fit": "Adatta",
+    "status.ready": "Pronto",
+    "doc.untitled": "Senza titolo"
   }
 }

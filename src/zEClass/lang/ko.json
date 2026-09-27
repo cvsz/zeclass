@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "원을 인식했습니다: 스포트라이트.",
     "msg.recognitionSquare": "사각형을 인식했습니다: 돋보기.",
     "msg.pageLocked": "이 페이지는 잠겨 있습니다. 지우기 전에 잠금을 해제하세요.",
-    "import.failed": "가져올 수 있는 항목이 없습니다."
+    "import.failed": "가져올 수 있는 항목이 없습니다.",
+    "tool.image": "이미지",
+    "tool.pinch": "핀치",
+    "tool.shapes": "도형",
+    "section.ink": "잉크",
+    "section.line": "선",
+    "section.fill": "채우기",
+    "section.theme": "테마",
+    "section.language": "언어",
+    "action.record": "녹화",
+    "action.stop": "중지",
+    "action.audio": "오디오",
+    "action.playback": "재생",
+    "action.acceptance": "인수 테스트",
+    "action.about": "정보",
+    "page.prev": "이전",
+    "page.next": "다음",
+    "page.add": "+ 페이지",
+    "action.fit": "맞춤",
+    "status.ready": "준비",
+    "doc.untitled": "제목 없음"
   }
 }

@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "円を認識しました：スポットライト。",
     "msg.recognitionSquare": "四角を認識しました：虫眼鏡。",
     "msg.pageLocked": "このページはロックされています。消去する前にロックを解除してください。",
-    "import.failed": "何もインポートできませんでした。"
+    "import.failed": "何もインポートできませんでした。",
+    "tool.image": "画像",
+    "tool.pinch": "ピンチ",
+    "tool.shapes": "図形",
+    "section.ink": "インク",
+    "section.line": "線",
+    "section.fill": "塗りつぶし",
+    "section.theme": "テーマ",
+    "section.language": "言語",
+    "action.record": "録画",
+    "action.stop": "停止",
+    "action.audio": "音声",
+    "action.playback": "再生",
+    "action.acceptance": "受け入れテスト",
+    "action.about": "情報",
+    "page.prev": "前へ",
+    "page.next": "次へ",
+    "page.add": "+ ページ",
+    "action.fit": "フィット",
+    "status.ready": "準備完了",
+    "doc.untitled": "無題"
   }
 }

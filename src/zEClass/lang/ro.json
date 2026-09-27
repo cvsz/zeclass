@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Cerc recunoscut: spot.",
     "msg.recognitionSquare": "Pătrat recunoscut: lupă.",
     "msg.pageLocked": "Această pagină este blocată. Deblocați-o înainte de a șterge.",
-    "import.failed": "Nu s-a putut importa nimic."
+    "import.failed": "Nu s-a putut importa nimic.",
+    "tool.image": "Imagine",
+    "tool.pinch": "Zoom",
+    "tool.shapes": "Forme",
+    "section.ink": "Cerneală",
+    "section.line": "Linie",
+    "section.fill": "Umplere",
+    "section.theme": "Temă",
+    "section.language": "Limbă",
+    "action.record": "Înregistrează",
+    "action.stop": "Oprește",
+    "action.audio": "Audio",
+    "action.playback": "Redă",
+    "action.acceptance": "Test de acceptanță",
+    "action.about": "Despre",
+    "page.prev": "Anterior",
+    "page.next": "Următor",
+    "page.add": "+ Pagină",
+    "action.fit": "Potrivește",
+    "status.ready": "Gata",
+    "doc.untitled": "Fără titlu"
   }
 }

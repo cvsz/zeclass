@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Kreis erkannt: Scheinwerfer.",
     "msg.recognitionSquare": "Quadrat erkannt: Lupe.",
     "msg.pageLocked": "Diese Seite ist gesperrt. Entsperren Sie sie vor dem Löschen.",
-    "import.failed": "Es konnte nichts importiert werden."
+    "import.failed": "Es konnte nichts importiert werden.",
+    "tool.image": "Bild",
+    "tool.pinch": "Zoomen",
+    "tool.shapes": "Formen",
+    "section.ink": "Stift",
+    "section.line": "Linie",
+    "section.fill": "Füllung",
+    "section.theme": "Design",
+    "section.language": "Sprache",
+    "action.record": "Aufnehmen",
+    "action.stop": "Stopp",
+    "action.audio": "Audio",
+    "action.playback": "Wiedergeben",
+    "action.acceptance": "Abnahmetest",
+    "action.about": "Über",
+    "page.prev": "Zurück",
+    "page.next": "Weiter",
+    "page.add": "+ Seite",
+    "action.fit": "Anpassen",
+    "status.ready": "Bereit",
+    "doc.untitled": "Unbenannt"
   }
 }

@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Αναγνωρίστηκε κύκλος: προβολέας.",
     "msg.recognitionSquare": "Αναγνωρίστηκε τετράγωνο: μεγεθυντικό.",
     "msg.pageLocked": "Αυτή η σελίδα είναι κλειδωμένη. Ξεκλειδώστε την πριν την καθαρισμό.",
-    "import.failed": "Δεν ήταν δυνατή η εισαγωγή."
+    "import.failed": "Δεν ήταν δυνατή η εισαγωγή.",
+    "tool.image": "Εικόνα",
+    "tool.pinch": "Τσίμπημα",
+    "tool.shapes": "Σχήματα",
+    "section.ink": "Μελάνι",
+    "section.line": "Γραμμή",
+    "section.fill": "Γέμισμα",
+    "section.theme": "Θέμα",
+    "section.language": "Γλώσσα",
+    "action.record": "Εγγραφή",
+    "action.stop": "Διακοπή",
+    "action.audio": "Ήχος",
+    "action.playback": "Αναπαραγωγή",
+    "action.acceptance": "Δοκιμή αποδοχής",
+    "action.about": "Σχετικά",
+    "page.prev": "Προηγ.",
+    "page.next": "Επόμ.",
+    "page.add": "+ Σελίδα",
+    "action.fit": "Προσαρμογή",
+    "status.ready": "Έτοιμο",
+    "doc.untitled": "Χωρίς τίτλο"
   }
 }

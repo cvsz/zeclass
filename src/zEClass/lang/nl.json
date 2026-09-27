@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Cirkel herkend: spotlight.",
     "msg.recognitionSquare": "Vierkant herkend: loep.",
     "msg.pageLocked": "Deze pagina is vergrendeld. Ontgrendel deze voordat u wist.",
-    "import.failed": "Er kon niets worden geïmporteerd."
+    "import.failed": "Er kon niets worden geïmporteerd.",
+    "tool.image": "Afbeelding",
+    "tool.pinch": "Knijp",
+    "tool.shapes": "Vormen",
+    "section.ink": "Inkt",
+    "section.line": "Lijn",
+    "section.fill": "Vulling",
+    "section.theme": "Thema",
+    "section.language": "Taal",
+    "action.record": "Opnemen",
+    "action.stop": "Stoppen",
+    "action.audio": "Audio",
+    "action.playback": "Afspelen",
+    "action.acceptance": "Acceptatietest",
+    "action.about": "Over",
+    "page.prev": "Vorige",
+    "page.next": "Volgende",
+    "page.add": "+ Pagina",
+    "action.fit": "Passend",
+    "status.ready": "Gereed",
+    "doc.untitled": "Naamloos"
   }
 }

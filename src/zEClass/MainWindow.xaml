@@ -274,7 +274,7 @@
                   Click="OnCalibrateClick" ToolTip="Four-point board calibration" />
 
           <Separator Margin="0,6" Background="{StaticResource ChromeBorder}" />
-          <TextBlock Text="Ink" Style="{StaticResource ChromeLabel}" Margin="4,0,0,2" />
+          <TextBlock x:Name="InkLabel" Text="Ink" Style="{StaticResource ChromeLabel}" Margin="4,0,0,2" />
           <ComboBox x:Name="ColorBox" Style="{StaticResource PaletteCombo}" Width="108"
                     ItemTemplate="{StaticResource ColorItemTemplate}"
                     SelectedIndex="0" Cursor="Hand"
@@ -283,24 +283,24 @@
                   VerticalAlignment="Center" Margin="0,6,0,4" IsSnapToTickEnabled="True"
                   TickFrequency="1" ToolTip="Stroke width" ValueChanged="OnWidthChanged"
                   AutomationProperties.Name="Stroke width" />
-          <TextBlock Text="Line" Style="{StaticResource ChromeLabel}" Margin="4,4,0,0" />
+          <TextBlock x:Name="LineLabel" Text="Line" Style="{StaticResource ChromeLabel}" Margin="4,4,0,0" />
           <ComboBox x:Name="LineStyleBox" Style="{StaticResource PaletteCombo}" Width="108"
                     ItemTemplate="{StaticResource StringItemTemplate}"
                     SelectedIndex="0" Cursor="Hand" SelectionChanged="OnLineStyleChanged"
                     AutomationProperties.Name="Line style" />
-          <TextBlock Text="Fill" Style="{StaticResource ChromeLabel}" Margin="4,4,0,0" />
+          <TextBlock x:Name="FillLabel" Text="Fill" Style="{StaticResource ChromeLabel}" Margin="4,4,0,0" />
           <ComboBox x:Name="FillBox" Style="{StaticResource PaletteCombo}" Width="108"
                     ItemTemplate="{StaticResource StringItemTemplate}"
                     SelectedIndex="0" Cursor="Hand" SelectionChanged="OnFillChanged"
                     AutomationProperties.Name="Shape fill" />
 
           <Separator Margin="0,6" Background="{StaticResource ChromeBorder}" />
-          <TextBlock Text="Theme" Style="{StaticResource ChromeLabel}" Margin="4,0,0,2" />
+          <TextBlock x:Name="ThemeLabel" Text="Theme" Style="{StaticResource ChromeLabel}" Margin="4,0,0,2" />
           <ComboBox x:Name="ThemeBox" Style="{StaticResource PaletteCombo}" Width="108"
                     ItemTemplate="{StaticResource ThemeItemTemplate}"
                     SelectedIndex="0" Cursor="Hand" SelectionChanged="OnThemeChanged"
                     AutomationProperties.Name="Board theme" />
-          <TextBlock Text="Language" Style="{StaticResource ChromeLabel}" Margin="4,4,0,0" />
+          <TextBlock x:Name="LanguageLabel" Text="Language" Style="{StaticResource ChromeLabel}" Margin="4,4,0,0" />
           <ComboBox x:Name="LanguageBox" Style="{StaticResource PaletteCombo}" Width="108"
                     ItemTemplate="{StaticResource LanguageItemTemplate}"
                     SelectedIndex="0" Cursor="Hand" SelectionChanged="OnLanguageChanged"

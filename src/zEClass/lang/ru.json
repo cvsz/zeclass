@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Распознан круг: прожектор.",
     "msg.recognitionSquare": "Распознан квадрат: лупа.",
     "msg.pageLocked": "Эта страница заблокирована. Разблокируйте её перед очисткой.",
-    "import.failed": "Не удалось импортировать ничего."
+    "import.failed": "Не удалось импортировать ничего.",
+    "tool.image": "Изображение",
+    "tool.pinch": "Щипок",
+    "tool.shapes": "Фигуры",
+    "section.ink": "Чернила",
+    "section.line": "Линия",
+    "section.fill": "Заливка",
+    "section.theme": "Тема",
+    "section.language": "Язык",
+    "action.record": "Запись",
+    "action.stop": "Стоп",
+    "action.audio": "Аудио",
+    "action.playback": "Воспроизвести",
+    "action.acceptance": "Приёмочный тест",
+    "action.about": "О программе",
+    "page.prev": "Назад",
+    "page.next": "Далее",
+    "page.add": "+ Страница",
+    "action.fit": "Вписать",
+    "status.ready": "Готово",
+    "doc.untitled": "Без названия"
   }
 }

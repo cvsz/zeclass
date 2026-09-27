@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "识别为圆形：聚光灯。",
     "msg.recognitionSquare": "识别为方形：放大镜。",
     "msg.pageLocked": "此页已锁定。请先解锁再清空。",
-    "import.failed": "未能导入任何内容。"
+    "import.failed": "未能导入任何内容。",
+    "tool.image": "图片",
+    "tool.pinch": "缩放",
+    "tool.shapes": "形状",
+    "section.ink": "墨水",
+    "section.line": "线条",
+    "section.fill": "填充",
+    "section.theme": "主题",
+    "section.language": "语言",
+    "action.record": "录制",
+    "action.stop": "停止",
+    "action.audio": "音频",
+    "action.playback": "回放",
+    "action.acceptance": "验收测试",
+    "action.about": "关于",
+    "page.prev": "上一页",
+    "page.next": "下一页",
+    "page.add": "+ 页面",
+    "action.fit": "适应",
+    "status.ready": "就绪",
+    "doc.untitled": "未命名"
   }
 }

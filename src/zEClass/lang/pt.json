@@ -46,6 +46,26 @@
     "msg.recognitionCircle": "Círculo reconhecido: foco.",
     "msg.recognitionSquare": "Quadrado reconhecido: lupa.",
     "msg.pageLocked": "Esta página está bloqueada. Desbloqueie-a antes de limpar.",
-    "import.failed": "Não foi possível importar nada."
+    "import.failed": "Não foi possível importar nada.",
+    "tool.image": "Imagem",
+    "tool.pinch": "Zoom",
+    "tool.shapes": "Formas",
+    "section.ink": "Tinta",
+    "section.line": "Linha",
+    "section.fill": "Preenchimento",
+    "section.theme": "Tema",
+    "section.language": "Idioma",
+    "action.record": "Gravar",
+    "action.stop": "Parar",
+    "action.audio": "Áudio",
+    "action.playback": "Reproduzir",
+    "action.acceptance": "Teste de aceitação",
+    "action.about": "Sobre",
+    "page.prev": "Anterior",
+    "page.next": "Seguinte",
+    "page.add": "+ Página",
+    "action.fit": "Ajustar",
+    "status.ready": "Pronto",
+    "doc.untitled": "Sem título"
   }
 }

@@ -208,7 +208,16 @@ public static class CatalogueAudit
         "de:tool.ellipse",   // Oval
         "el:action.email",   // Email
         "fr:tool.capture",   // Capture
+        "fr:tool.image",     // Image
+        "fr:page.add",       // + Page
         "nl:tool.pen",       // Pen
+        "da:action.stop",    // Stop
+        "de:action.audio",   // Audio
+        "fr:action.audio",   // Audio
+        "it:action.audio",   // Audio
+        "es:action.audio",   // Audio
+        "nl:action.audio",   // Audio
+        "ro:action.audio",   // Audio
         "fr:status.page",    // Page {0} / {1}
         "hu:status.page",    // {0} / {1}. oldal
         "ja:status.page",    // {0} / {1} ページ
@@ -322,6 +331,26 @@ public sealed class Locator
         ["tool.clock"] = "Clock",
         ["tool.keyboard"] = "Keys",
         ["tool.capture"] = "Capture",
+        ["tool.image"] = "Image",
+        ["tool.pinch"] = "Pinch",
+        ["tool.shapes"] = "Shapes",
+        ["section.ink"] = "Ink",
+        ["section.line"] = "Line",
+        ["section.fill"] = "Fill",
+        ["section.theme"] = "Theme",
+        ["section.language"] = "Language",
+        ["action.record"] = "Record",
+        ["action.stop"] = "Stop",
+        ["action.audio"] = "Audio",
+        ["action.playback"] = "Play back",
+        ["action.acceptance"] = "Acceptance test",
+        ["action.about"] = "About",
+        ["page.prev"] = "Prev",
+        ["page.next"] = "Next",
+        ["page.add"] = "+ Page",
+        ["action.fit"] = "Fit",
+        ["status.ready"] = "Ready",
+        ["doc.untitled"] = "Untitled board",
         ["status.page"] = "Page {0} / {1}",
         ["status.strokes"] = "{0} strokes",
         ["status.calibrated"] = "calibrated",
