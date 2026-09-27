@@ -133,8 +133,8 @@ public sealed class InkEngine
     /// <summary>Width for a sample, blending tool base width with pressure.</summary>
     public double EffectiveWidth(double baseWidth, InkPoint sample)
     {
-        // A reported pressure of zero means "no data" (contact-only digitizer, mouse, or the
-        // WPF fallback), not "zero force", so mid-scale is the honest interpretation.
+        // A reported pressure of zero means "no data" (contact-only digitizer or the mouse
+        // path), not "zero force", so mid-scale is the honest interpretation.
         var pressure = sample.Pressure <= 0 ? DefaultPressure : Math.Clamp(sample.Pressure, 0, 1);
         var ratio = MinWidthRatio + (1.0 - MinWidthRatio) * pressure;
         return Math.Max(MinimumWidthPx, baseWidth * ratio);

@@ -1819,7 +1819,7 @@ public partial class MainWindow : Window
 
         sb.AppendLine();
         sb.AppendLine("Pointer input:");
-        sb.AppendLine($"  Pointer messages: {(Surface.HasPointerTarget ? "registered" : "FALLBACK")}");
+        sb.AppendLine($"  Path: {InkSurface.InputPath}");
         sb.AppendLine($"  Active pen contacts:    {Surface.Engine.ActiveStylusCount}");
         sb.AppendLine($"  Active touch contacts:  {Surface.Engine.ActiveTouchCount}");
         sb.AppendLine($"  Palm rejection: {Surface.Engine.PalmRejectionEnabled}");

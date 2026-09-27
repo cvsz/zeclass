@@ -29,8 +29,8 @@ namespace zEClass;
 /// Honesty rules baked in, because a hardware report is only worth anything if it can fail:
 ///   - A capability the hardware does not have reports SKIP, never PASS.
 ///   - Nothing is pre-filled, and no measurement is invented.
-///   - The report records which input path was live, so a fallback-path run is not mistaken for
-///     a full-fidelity one.
+///   - The report records the input path and which contacts actually arrived, so a mouse-only
+///     run is not mistaken for a pen run.
 /// </summary>
 public sealed partial class HardwareAcceptanceWindow : Window
 {
@@ -343,9 +343,8 @@ public sealed partial class HardwareAcceptanceWindow : Window
         _run.ScreenDescription =
             $"{SystemParameters.PrimaryScreenWidth}x{SystemParameters.PrimaryScreenHeight} " +
             $"(window {ActualWidth:F0}x{ActualHeight:F0})";
-        _run.InputPath = _surface.HasPointerTarget
-            ? "WM_POINTER (full fidelity: pressure, eraser tip, palm flags)"
-            : "WPF fallback (reduced fidelity: no eraser tip or palm flag from the driver)";
+        _run.InputPath =
+            "WM_POINTER (pen/touch: pressure, eraser tip, tilt, palm flags) + WPF (mouse)";
 
         _surface.SizeChanged += (_, _) => LayoutTarget();
 

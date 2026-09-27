@@ -44,9 +44,10 @@ strokes stay separate. Two caveats:
   on the board must not scribble. It means finger-writing stops while a pen is being used. Set
   `PalmRejectionEnabled = false` on `InkEngine` if a class needs simultaneous pen and finger
   input on the same panel.
-- Touch contacts in the WPF fallback path use `e.TouchDevice.Id` as the id, which is shared
-  across fingers. Multi-finger writing is only distinct on the pointer-message path. The app
-  logs whether pointer registration succeeded, so check the log to know which path is active.
+- Touch and pen contacts carry the Windows pointer id, which is distinct per finger, so
+  multi-finger writing stays separate. The WPF stylus and touch events are consumed without
+  drawing (see "Input architecture" in the README), so they cannot duplicate a contact under a
+  second id. The Diagnostics panel reports the active input path.
 
 ## 4. When nothing is detected
 
@@ -63,9 +64,9 @@ Check in order:
    utility that toggles this; run it once after installation.
 5. **Pen without pressure.** Some pens need their driver installed before the digitizer reports
    pressure. Until then the board draws uniform lines, which is expected.
-6. **Check the log.** `%LOCALAPPDATA%\zEClass\logs\zEClass.log` records whether
-   `RegisterPointerInputTarget` succeeded. A failure means the app is on the WPF fallback path
-   (reduced fidelity, not a hard failure).
+6. **Check the log.** `%LOCALAPPDATA%\zEClass\logs\zEClass.log` records whether DPI awareness had
+   to be enabled from code and any `WM_POINTER` read failures. Read failures mean pen or touch
+   input is being dropped (logged up to three times), which is a defect — report it.
 
 ## 5. Calibration (do this first)
 
@@ -136,10 +137,10 @@ Two rules are deliberate and are covered by tests:
   ignored absent hardware would hide the exact problem the run exists to find.
 - **Skipping a step by hand records a skip**, not a pass.
 
-The report also records which input path was live. On the `WM_POINTER` path the app gets pressure,
-eraser-tip identity and palm flags from the driver. On the WPF fallback it does not, so an
-eraser-tip check on a fallback run can only ever skip — which is the correct answer, not a defect
-in the app.
+The report also records the input path: pen and touch always arrive on `WM_POINTER`, where the app
+gets pressure, eraser-tip identity and palm flags from the driver, and mouse always arrives on the
+WPF mouse events. A capability the hardware cannot report (for example pressure on a contact-only
+panel) is a skip — which is the correct answer, not a defect in the app.
 
 Thresholds live in `AcceptanceThresholds`. The defaults are loose enough to pass a mediocre panel
 and tight enough to catch a broken one. A school with good hardware can tighten them and record

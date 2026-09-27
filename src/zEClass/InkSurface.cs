@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -14,9 +13,10 @@ namespace zEClass;
 
 /// <summary>
 /// The board surface. Owns input handling (pen, touch, mouse, gestures), the selection, and
-/// rendering. WPF draws; input arrives through the Win32 pointer-message stack because that is
-/// the only Windows API carrying pressure, eraser tip, tilt and palm flags for USB panels, with
-/// the WPF stylus/touch stack as a fallback.
+/// rendering. WPF draws; pen and touch arrive through the Win32 pointer-message stack because
+/// that is the only Windows API carrying pressure, eraser tip, tilt and palm flags for USB
+/// panels, mouse arrives through the WPF mouse events, and the WPF stylus/touch events are
+/// consumed without drawing so the same contact cannot become a second stroke.
 /// </summary>
 public sealed class InkSurface : FrameworkElement
 {
@@ -188,8 +188,11 @@ public sealed class InkSurface : FrameworkElement
 
     public event EventHandler? ViewChanged;
 
-    /// <summary>True once the native window accepted WM_POINTER messages for this surface.</summary>
-    public bool HasPointerTarget { get; private set; }
+    /// <summary>
+    /// เส้นทางอินพุตที่แอปใช้จริง: pen/touch ผ่าน WM_POINTER (WndProc) และ mouse ผ่าน WPF
+    /// ทั้งสองเส้นทางผลิต PointerSample ชุดเดียวกัน จึงรายงานได้โดยไม่ต้องเดาว่าอันไหนทำงานอยู่
+    /// </summary>
+    public static string InputPath => "WM_POINTER (pen/touch) + WPF (mouse)";
 
     /// <summary>Contacts currently down. Used by the hardware acceptance harness.</summary>
     public int ContactCount => _contacts.Count;
@@ -216,16 +219,18 @@ public sealed class InkSurface : FrameworkElement
 
         _source = source;
 
-        // The pointer stack must be registered on the top-level window, and only after the
-        // window is fully created, otherwise the call is refused.
-        if (!HasPointerTarget && !TryRegisterPointerTarget(source.Handle))
+        // ptPixelLocation ของ WM_POINTER เป็นพิกัดจอจริง ต้องได้ DPI awareness เป็น
+        // per-monitor v2 ก่อนไม่งั้นค่าเพี้ยนตอนจอสองเครื่องคนละ scale
+        if (!PointerNative.IsProcessDpiAwarenessSet())
         {
-            CrashLog.Info("RegisterPointerInputTarget unavailable; using WPF input fallback.");
+            PointerNative.EnablePerMonitorV2();
+            CrashLog.Info("Enabled PerMonitorV2 awareness from code (manifest was not honored).");
         }
 
         source.AddHook(WndProc);
         RebuildCache();
     }
+
 
     private void OnSurfaceUnloaded(object sender, RoutedEventArgs e)
     {
@@ -236,35 +241,6 @@ public sealed class InkSurface : FrameworkElement
         }
 
         _live.Clear();
-    }
-
-    private bool TryRegisterPointerTarget(IntPtr hwnd)
-    {
-        if (hwnd == IntPtr.Zero)
-        {
-            return false;
-        }
-
-        if (!PointerNative.IsProcessDpiAwarenessSet())
-        {
-            PointerNative.EnablePerMonitorV2();
-            CrashLog.Info("Enabled PerMonitorV2 awareness from code (manifest was not honored).");
-        }
-
-        if (PointerNative.RegisterPointerInputTarget(hwnd))
-        {
-            HasPointerTarget = true;
-            return true;
-        }
-
-        CrashLog.Info($"RegisterPointerInputTarget failed: {Marshal.GetLastWin32Error()}");
-        var ok = false;
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            ok = PointerNative.RegisterPointerInputTarget(hwnd);
-            HasPointerTarget = ok;
-        }));
-        return ok;
     }
 
     // ---- edit operations --------------------------------------------------------
@@ -554,37 +530,9 @@ public sealed class InkSurface : FrameworkElement
         switch (msg)
         {
             case PointerNative.WmPointerDown:
-                if (PointerNative.Read(pointerId) is { } down)
-                {
-                    OnDown(Calibrate(down, isDevicePixels: true));
-                }
-
-                handled = true;
-                return IntPtr.Zero;
-
             case PointerNative.WmPointerUpdate:
-                if (PointerNative.Read(pointerId) is { } update)
-                {
-                    if (update.InContact)
-                    {
-                        OnMove(Calibrate(update, isDevicePixels: true));
-                    }
-                    else if (update.InRange)
-                    {
-                        OnHover(Calibrate(update, isDevicePixels: true));
-                    }
-                }
-
-                handled = true;
-                return IntPtr.Zero;
-
             case PointerNative.WmPointerUp:
-                if (PointerNative.Read(pointerId) is { } up)
-                {
-                    OnUp(Calibrate(up, isDevicePixels: true));
-                }
-
-                handled = true;
+                handled = HandlePointerMessage(msg, pointerId);
                 return IntPtr.Zero;
 
             case PointerNative.WmPointerEnter:
@@ -597,6 +545,60 @@ public sealed class InkSurface : FrameworkElement
         }
 
         return IntPtr.Zero;
+    }
+
+    private static int _pointerReadFailures;
+
+    /// <summary>
+    /// แปลง WM_POINTER หนึ่งข้อความเป็นเหตุการณ์วาด
+    /// คืน true เมื่อเรา consume ข้อความนี้เอง — pen/touch เท่านั้น เพราะ mouse ไม่มี
+    /// WM_POINTER ในสภาพปกติ (ไม่ได้เรียก EnableMouseInPointer) และถ้ามีก็ต้องปล่อยให้
+    /// เส้นทาง WPF จัดการเพื่อไม่ให้วาดซ้ำสองรอบ อ่านข้อมูลไม่ได้จะถูกกลืนไว้
+    /// ไม่ให้ DefWindowProc promote เป็น mouse แล้ววาดทับเส้นทางนี้
+    /// </summary>
+    private bool HandlePointerMessage(int msg, int pointerId)
+    {
+        if (PointerNative.Read(pointerId) is not { } sample)
+        {
+            if (Interlocked.Increment(ref _pointerReadFailures) <= 3)
+            {
+                CrashLog.Info($"WM_POINTER read failed (id {pointerId}, msg 0x{msg:X}); sample dropped.");
+            }
+
+            return true;
+        }
+
+        if (sample.IsMouse)
+        {
+            return false;
+        }
+
+        var s = Calibrate(sample, isDevicePixels: true);
+        switch (msg)
+        {
+            case PointerNative.WmPointerDown:
+                OnDown(s);
+                return true;
+
+            case PointerNative.WmPointerUpdate:
+                if (s.InContact)
+                {
+                    OnMove(s);
+                }
+                else if (s.InRange)
+                {
+                    OnHover(s);
+                }
+
+                return true;
+
+            case PointerNative.WmPointerUp:
+                OnUp(s);
+                return true;
+
+            default:
+                return false;
+        }
     }
 
     private void OnDown(PointerSample s)
@@ -1538,107 +1540,57 @@ public sealed class InkSurface : FrameworkElement
             surface.History.Execute(document, command);
     }
 
-    // ---- WPF stylus / touch / mouse fallback ---------------------------------------
+    // ---- WPF stylus / touch (consume) + mouse (primary) --------------------------
+
+    // pen/touch เป็นของ WM_POINTER ใน WndProc เท่านั้น — handler เหล่านี้ทำหน้าที่ consume
+    // อย่างเดียวเพื่อหยุด WPF promotion engine (stylus→touch→mouse) ไม่งั้นจุดเดียวกัน
+    // จะถูกวาดซ้ำอีกครั้งผ่าน OnMouseDown
 
     protected override void OnStylusDown(StylusDownEventArgs e)
     {
         base.OnStylusDown(e);
-        if (HasPointerTarget)
-        {
-            return;
-        }
-
-        var p = e.GetPosition(this);
-        OnDown(ElementSample(PointerInputType.Pen, e.StylusDevice.Id, p, e.Inverted, 0.5));
         e.Handled = true;
     }
 
     protected override void OnStylusMove(StylusEventArgs e)
     {
         base.OnStylusMove(e);
-        if (HasPointerTarget || !_live.ContainsKey(e.StylusDevice.Id))
-        {
-            return;
-        }
-
-        foreach (var sp in e.GetStylusPoints(this))
-        {
-            var pressure = sp.PressureFactor <= 0 ? 0.5 : sp.PressureFactor;
-            _engine.RecordPressure(e.StylusDevice.Id, pressure);
-            OnMove(ElementSample(PointerInputType.Pen, e.StylusDevice.Id,
-                new Point(sp.X, sp.Y), e.Inverted, pressure));
-        }
-
         e.Handled = true;
     }
 
     protected override void OnStylusUp(StylusEventArgs e)
     {
         base.OnStylusUp(e);
-        if (HasPointerTarget)
-        {
-            return;
-        }
-
-        var p = e.GetPosition(this);
-        OnUp(ElementSample(PointerInputType.Pen, e.StylusDevice.Id, p, e.Inverted, 0.5));
         e.Handled = true;
-    }
-
-    protected override void OnStylusInAirMove(StylusEventArgs e)
-    {
-        base.OnStylusInAirMove(e);
-        if (!HasPointerTarget)
-        {
-            _engine.RecordPressure(e.StylusDevice.Id, 0);
-        }
     }
 
     protected override void OnTouchDown(TouchEventArgs e)
     {
         base.OnTouchDown(e);
-        if (HasPointerTarget)
-        {
-            return;
-        }
-
-        var p = e.GetTouchPoint(this).Position;
-        OnDown(ElementSample(PointerInputType.Touch, e.TouchDevice.Id, p, false, 0.5));
         e.Handled = true;
     }
 
     protected override void OnTouchMove(TouchEventArgs e)
     {
         base.OnTouchMove(e);
-        if (HasPointerTarget || !_live.ContainsKey(e.TouchDevice.Id))
-        {
-            return;
-        }
-
-        var p = e.GetTouchPoint(this).Position;
-        OnMove(ElementSample(PointerInputType.Touch, e.TouchDevice.Id, p, false, 0.5));
         e.Handled = true;
     }
 
     protected override void OnTouchUp(TouchEventArgs e)
     {
         base.OnTouchUp(e);
-        if (HasPointerTarget)
-        {
-            return;
-        }
-
-        var p = e.GetTouchPoint(this).Position;
-        OnUp(ElementSample(PointerInputType.Touch, e.TouchDevice.Id, p, false, 0.5));
         e.Handled = true;
     }
+
+    // mouse ไม่มี WM_POINTER ในสภาพปกติ (ไม่ได้เปิด EnableMouseInPointer) จึงเป็น
+    // เส้นทางหลักของเมาส์ — กติกาเดิมคือกดซ้ายเท่านั้นและต้องมี stroke ค้างอยู่
 
     private const int MouseStrokeId = -1;
 
     protected override void OnMouseDown(MouseButtonEventArgs e)
     {
         base.OnMouseDown(e);
-        if (HasPointerTarget || e.ChangedButton != MouseButton.Left)
+        if (e.ChangedButton != MouseButton.Left)
         {
             return;
         }
@@ -1651,7 +1603,7 @@ public sealed class InkSurface : FrameworkElement
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
-        if (HasPointerTarget || e.LeftButton != MouseButtonState.Pressed ||
+        if (e.LeftButton != MouseButtonState.Pressed ||
             !_live.ContainsKey(MouseStrokeId))
         {
             return;
@@ -1664,7 +1616,7 @@ public sealed class InkSurface : FrameworkElement
     protected override void OnMouseUp(MouseButtonEventArgs e)
     {
         base.OnMouseUp(e);
-        if (HasPointerTarget || e.ChangedButton != MouseButton.Left)
+        if (e.ChangedButton != MouseButton.Left)
         {
             return;
         }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace zEClass.Core;
@@ -35,7 +36,11 @@ public readonly struct PointerSample
     public bool InRange { get; }
     public bool Eraser { get; }
     public bool Palm { get; }
+
+    /// <summary>Tilt magnitude in degrees, 0..90 (NaN when the device reports none).</summary>
     public double Tilt { get; }
+
+    /// <summary>Pen twist in degrees, 0..359 (NaN when the device reports none).</summary>
     public double Orientation { get; }
 
     public bool IsPen => Type == PointerInputType.Pen;
@@ -45,19 +50,24 @@ public readonly struct PointerSample
     public bool IsMouse => Type == PointerInputType.Mouse;
 }
 
+/// <summary>
+/// ค่าตรงกับ POINTER_INPUT_TYPE ใน winuser.h ห้ามเปลี่ยนตัวเลขเอง เพราะ struct marshal
+/// อ่านค่าชนิดนี้เป็น int จากข้อความ WM_POINTER ตรงๆ
+/// </summary>
 public enum PointerInputType
 {
     Unknown = 0,
-    Mouse = 1,
+    Pointer = 1,
     Touch = 2,
     Pen = 3,
-    TouchPen = 4,
+    Mouse = 4,
+    Touchpad = 5,
 }
 
 /// <summary>
-/// Thin, allocation-free reader for the Win32 pointer-message API. Struct layouts are read
-/// through fixed byte offsets into an oversized unmanaged buffer so no marshalling guesswork
-/// can corrupt memory; every field is range-validated before use.
+/// ตัวอ่าน Win32 pointer-message แบบ struct marshal ตาม layout ที่ MSDN กำหนด
+/// (POINTER_INFO / POINTER_PEN_INFO) จึงถูกต้องทั้ง x64/x86/ARM64 โดยไม่ต้องเดา offset
+/// ทุกฟิลด์ถูก range-validate ก่อนใช้ และทุก P/Invoke มีลายเซ็นตรงกับ winuser.h
 /// </summary>
 public static class PointerNative
 {
@@ -70,146 +80,111 @@ public static class PointerNative
     public const int WmMouseDown = 0x0201;
     public const int WmMouseUp = 0x0202;
 
-    private const int BufferSize = 512;
+    private const int MaxFramePointers = 64;
+    private const uint PressureMax = 1024;
+    private const int TiltDegreesMax = 90;
+    private const uint RotationDegreesMax = 360;
 
-    // POINTER_INFO field offsets, x64 layout.
-    private const int OffPointerType = 0;
-    private const int OffPointerId = 4;
-    private const int OffPointerFlags = 12;
-    private const int OffPixelLocationX = 32;
-    private const int OffPixelLocationY = 36;
+    // ---- native layout (winuser.h) --------------------------------------------
 
-    // POINTER_PEN_INFO field offsets, x64 layout.
-    private const int PenOffPenFlags = 4;
-    private const int PenOffPressure = 168;
-    private const int PenOffNegativeTilt = 176;
-    private const int PenOffAzimuth = 180;
-    private const int PenOffOrientation = 184;
-    private const int PenOffTilt = 188;
-
-    // POINTER_FLAGS
-    private const uint FlagInContact = 0x00000001;
-    private const uint FlagInRange = 0x00000002;
-    private const uint FlagPalm = 0x00000008;
-
-    // POINTER_PEN_FLAGS
-    private const uint PenFlagEraser = 0x00000001;
-
-    private const int PressureMax = 1024;
-    private const int TiltMax = 9000;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool RegisterPointerInputTarget(IntPtr hwnd);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool RegisterPointerInputTargetEx(IntPtr hwnd, uint flags);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern int GetPointerInfo(int pointerId, IntPtr pointerInfo);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern int GetPointerPenInfo(int pointerId, IntPtr pointerPenInfo);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern int GetPointerType(int pointerId);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool GetPointerFrameInfo(int pointerId, out uint frameId, out uint pointerCount);
-
-    /// <summary>
-    /// Reads every contact that belongs to one pointer frame. Two-finger gestures need this
-    /// rather than the per-pointer messages, because both contacts must be sampled from the
-    /// same frame; mixing WM_POINTER updates from two contacts lags and jitters.
-    /// </summary>
-    public static IReadOnlyList<PointerSample> ReadFrame(int pointerId)
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct NativePoint
     {
-        var samples = new List<PointerSample>(4);
-        if (!GetPointerFrameInfo(pointerId, out var frameId, out var count) || count == 0 || count > 64)
-        {
-            return samples;
-        }
-
-        var infoBuffer = Marshal.AllocHGlobal(BufferSize);
-        var penBuffer = Marshal.AllocHGlobal(BufferSize);
-        var idsBuffer = Marshal.AllocHGlobal((int)count * 4);
-        try
-        {
-            if (GetPointerIds((int)frameId, (int)count, idsBuffer) is false)
-            {
-                return samples;
-            }
-
-            for (var i = 0; i < count; i++)
-            {
-                var id = Marshal.ReadInt32(idsBuffer, i * 4);
-                if (GetPointerInfo(id, infoBuffer) == 0)
-                {
-                    continue;
-                }
-
-                var type = (PointerInputType)Marshal.ReadInt32(infoBuffer, OffPointerType);
-                var flags = unchecked((uint)Marshal.ReadInt32(infoBuffer, OffPointerFlags));
-                var x = Marshal.ReadInt32(infoBuffer, OffPixelLocationX);
-                var y = Marshal.ReadInt32(infoBuffer, OffPixelLocationY);
-
-                var pressure = 0.5;
-                var eraser = false;
-                var tilt = double.NaN;
-                var orientation = double.NaN;
-                if (GetPointerPenInfo(id, penBuffer) != 0 &&
-                    type is PointerInputType.Pen or PointerInputType.TouchPen)
-                {
-                    eraser = (unchecked((uint)Marshal.ReadInt32(penBuffer, PenOffPenFlags)) &
-                        PenFlagEraser) != 0;
-                    var raw = Marshal.ReadInt32(penBuffer, PenOffPressure);
-                    if (raw is > 0 and <= PressureMax)
-                    {
-                        pressure = (double)raw / PressureMax;
-                    }
-
-                    var rawTilt = Marshal.ReadInt32(penBuffer, PenOffTilt);
-                    if (rawTilt is >= 0 and <= TiltMax)
-                    {
-                        tilt = rawTilt / 90.0;
-                    }
-
-                    var rawOrientation = Marshal.ReadInt32(penBuffer, PenOffOrientation);
-                    if (rawOrientation is >= 0 and < 3600)
-                    {
-                        orientation = rawOrientation / 10.0;
-                    }
-                }
-
-                samples.Add(new PointerSample(
-                    type, id, x, y, pressure,
-                    (flags & FlagInContact) != 0,
-                    (flags & FlagInRange) != 0,
-                    eraser,
-                    (flags & FlagPalm) != 0,
-                    tilt,
-                    orientation));
-            }
-        }
-        catch (Exception)
-        {
-            return samples;
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(infoBuffer);
-            Marshal.FreeHGlobal(penBuffer);
-            Marshal.FreeHGlobal(idsBuffer);
-        }
-
-        return samples;
+        public int X;
+        public int Y;
     }
 
+    /// <summary>POINTER_INFO — 96 ไบต์บน x64, 88 ไบต์บน x86 (ทดสอบโดย unit test)</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct PointerInfo
+    {
+        public PointerInputType PointerType;
+        public uint PointerId;
+        public uint FrameId;
+        public PointerFlags PointerFlags;
+        public IntPtr SourceDevice;
+        public IntPtr HwndTarget;
+        public NativePoint PtPixelLocation;
+        public NativePoint PtHimetricLocation;
+        public NativePoint PtPixelLocationRaw;
+        public NativePoint PtHimetricLocationRaw;
+        public uint DwTime;
+        public uint HistoryCount;
+        public int InputData;
+        public uint DwKeyStates;
+        public ulong PerformanceCount;
+        public int ButtonChangeType;
+    }
+
+    /// <summary>POINTER_PEN_INFO — 120 ไบต์บน x64, 112 ไบต์บน x86 (ทดสอบโดย unit test)</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct PointerPenInfo
+    {
+        public PointerInfo PointerInfo;
+        public PenFlags PenFlags;
+        public PenMask PenMask;
+        public uint Pressure;
+        public uint Rotation;
+        public int TiltX;
+        public int TiltY;
+    }
+
+    /// <summary>POINTER_FLAGS — ค่าจากหน้า Pointer Flags ของ MSDN</summary>
+    [Flags]
+    internal enum PointerFlags : uint
+    {
+        None = 0,
+        New = 0x00000001,
+        InRange = 0x00000002,
+        InContact = 0x00000004,
+        FirstButton = 0x00000010,
+        Primary = 0x00002000,
+        Confidence = 0x000004000,
+        Canceled = 0x00008000,
+        Down = 0x00010000,
+        Update = 0x00020000,
+        Up = 0x00040000,
+    }
+
+    /// <summary>PEN_FLAGS — Barrel=1, Inverted=2 (กลับด้าน), Eraser=4</summary>
+    [Flags]
+    internal enum PenFlags : uint
+    {
+        None = 0,
+        Barrel = 0x00000001,
+        Inverted = 0x00000002,
+        Eraser = 0x00000004,
+    }
+
+    /// <summary>PEN_MASK — บอกว่าฟิลด์ใดใน POINTER_PEN_INFO ใช้ได้จริง</summary>
+    [Flags]
+    internal enum PenMask : uint
+    {
+        None = 0,
+        Pressure = 0x00000001,
+        Rotation = 0x00000002,
+        TiltX = 0x00000004,
+        TiltY = 0x00000008,
+    }
+
+    // ---- P/Invoke (ลายเซ็นตรงกับ winuser.h ทุกตัว) ---------------------------
+
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetPointerIds(int frameId, int pointerCount, IntPtr pointerIds);
+    internal static extern bool GetPointerInfo(uint pointerId, ref PointerInfo pointerInfo);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetPointerPenInfo(uint pointerId, ref PointerPenInfo pointerPenInfo);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetPointerType(uint pointerId, out PointerInputType pointerType);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetPointerFrameInfo(uint pointerId, ref uint pointerCount,
+        [Out] PointerInfo[] pointerInfo);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -229,10 +204,13 @@ public static class PointerNative
     [DllImport("user32.dll")]
     private static extern bool AreDpiAwarenessContextsEqual(IntPtr a, IntPtr b);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetThreadDpiAwarenessContext();
+
     /// <summary>
-    /// True when the process already runs with per-monitor-v2 awareness. The pointer stack
-    /// refuses to register on a DPI-unaware or system-aware process, so this must be checked
-    /// before <see cref="RegisterPointerInputTarget"/>.
+    /// True when the process already runs with per-monitor-v2 (or system) awareness.
+    /// ptPixelLocation ของ WM_POINTER เป็นพิกัดจอจริง ถ้า process ไม่ได้ DPI-aware
+    /// ค่าที่อ่านมาจะเพี้ยนตอนจอสองเครื่องคนละ scale
     /// </summary>
     public static bool IsProcessDpiAwarenessSet()
     {
@@ -268,92 +246,165 @@ public static class PointerNative
         }
     }
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetThreadDpiAwarenessContext();
+    // ---- reading --------------------------------------------------------------
 
+    /// <summary>
+    /// อ่านจุดสัมผัสหนึ่งจุดจาก pointer id ของข้อความ WM_POINTER
+    /// คืน null เมื่อ id ไม่มีอยู่จริงหรือระบบไม่ยอมให้อ่าน (อ่านได้เฉพาะบน UI thread
+    /// ของ thread ที่ได้รับข้อความเท่านั้น)
+    /// </summary>
     public static PointerSample? Read(int pointerId)
     {
-        var buffer = Marshal.AllocHGlobal(BufferSize);
+        if (pointerId < 0)
+        {
+            return null;
+        }
+
         try
         {
-            var pen = GetPointerPenInfo(pointerId, buffer);
-            if (pen == 0)
+            var info = default(PointerInfo);
+            if (!GetPointerInfo((uint)pointerId, ref info))
             {
                 return null;
             }
 
-            var type = (PointerInputType)Marshal.ReadInt32(buffer, OffPointerType);
-            var id = Marshal.ReadInt32(buffer, OffPointerId);
-            var flags = unchecked((uint)Marshal.ReadInt32(buffer, OffPointerFlags));
-            var x = Marshal.ReadInt32(buffer, OffPixelLocationX);
-            var y = Marshal.ReadInt32(buffer, OffPixelLocationY);
-
-            var pressure = 0.5;
-            var eraser = false;
-            var tilt = double.NaN;
-            var orientation = double.NaN;
-
-            if (type is PointerInputType.Pen or PointerInputType.TouchPen)
-            {
-                var penFlags = unchecked((uint)Marshal.ReadInt32(buffer, PenOffPenFlags));
-                eraser = (penFlags & PenFlagEraser) != 0;
-                var raw = Marshal.ReadInt32(buffer, PenOffPressure);
-                if (raw is > 0 and <= PressureMax)
-                {
-                    pressure = (double)raw / PressureMax;
-                }
-
-                var rawTilt = Marshal.ReadInt32(buffer, PenOffTilt);
-                if (rawTilt is >= 0 and <= TiltMax)
-                {
-                    tilt = rawTilt / 90.0;
-                }
-
-                var rawOrientation = Marshal.ReadInt32(buffer, PenOffOrientation);
-                if (rawOrientation is >= 0 and < 3600)
-                {
-                    orientation = rawOrientation / 10.0;
-                }
-
-                // Fall back to the azimuth/negative-tilt pair when tilt is not reported.
-                if (double.IsNaN(tilt))
-                {
-                    var negTilt = Marshal.ReadInt32(buffer, PenOffNegativeTilt);
-                    var azimuth = Marshal.ReadInt32(buffer, PenOffAzimuth);
-                    if (Math.Abs(negTilt) is > 0 and <= TiltMax && azimuth is >= 0 and < 3600)
-                    {
-                        tilt = Math.Abs(negTilt) / 90.0;
-                        orientation = azimuth / 10.0;
-                    }
-                }
-            }
-
-            return new PointerSample(
-                type,
-                id,
-                x,
-                y,
-                pressure,
-                (flags & FlagInContact) != 0,
-                (flags & FlagInRange) != 0,
-                eraser,
-                (flags & FlagPalm) != 0,
-                tilt,
-                orientation);
+            return SampleFor(in info);
         }
         catch (Exception)
         {
             return null;
         }
-        finally
+    }
+
+    /// <summary>
+    /// อ่านทุกจุดสัมผัสในเฟรมเดียวกัน (GetPointerFrameInfo) นิ้วสองนิ้วต้องถูกอ่าน
+    /// จากเฟรมเดียวกันไม่งั้น gesture สั่นคลอน
+    /// </summary>
+    public static IReadOnlyList<PointerSample> ReadFrame(int pointerId)
+    {
+        var samples = new List<PointerSample>(4);
+        if (pointerId < 0)
         {
-            Marshal.FreeHGlobal(buffer);
+            return samples;
+        }
+
+        try
+        {
+            var infos = new PointerInfo[MaxFramePointers];
+            var count = (uint)infos.Length;
+            if (!GetPointerFrameInfo((uint)pointerId, ref count, infos) ||
+                count == 0 || count > (uint)infos.Length)
+            {
+                return samples;
+            }
+
+            for (var i = 0; i < count; i++)
+            {
+                samples.Add(SampleFor(in infos[i]));
+            }
+        }
+        catch (Exception)
+        {
+            return samples;
+        }
+
+        return samples;
+    }
+
+    /// <summary>ชนิดของ pointer id (PT_TOUCH=2, PT_PEN=3, PT_MOUSE=4) คืน Unknown เมื่ออ่านไม่ได้</summary>
+    public static PointerInputType TypeOf(int pointerId)
+    {
+        if (pointerId < 0)
+        {
+            return PointerInputType.Unknown;
+        }
+
+        try
+        {
+            return GetPointerType((uint)pointerId, out var type) ? type : PointerInputType.Unknown;
+        }
+        catch (Exception)
+        {
+            return PointerInputType.Unknown;
         }
     }
 
-    public static PointerInputType TypeOf(int pointerId)
+    /// <summary>
+    /// เติม pen data ต่อเมื่อ pointer เป็น pen และ GetPointerPenInfo สำเร็จ
+    /// (pen fields ไม่มีใน mouse/touch และไม่ควรอ่านมั่วจาก buffer ที่ระบบไม่ได้เขียน)
+    /// </summary>
+    internal static PointerSample SampleFor(in PointerInfo info)
     {
-        var t = GetPointerType(pointerId);
-        return t > 0 ? (PointerInputType)t : PointerInputType.Unknown;
+        if (info.PointerType == PointerInputType.Pen)
+        {
+            var pen = default(PointerPenInfo);
+            if (GetPointerPenInfo(info.PointerId, ref pen))
+            {
+                return Parse(in info, in pen, hasPenInfo: true);
+            }
+        }
+
+        return Parse(in info, default, hasPenInfo: false);
+    }
+
+    internal static PointerSample Parse(in PointerInfo info) =>
+        Parse(in info, default, hasPenInfo: false);
+
+    /// <summary>
+    /// แปลง struct เป็น PointerSample — ฟิลด์ pressure/tilt/rotation อ่านเฉพาะตอน
+    /// PEN_MASK บอกว่าใช้ได้ ไม่งั้นค่าใน struct เป็นค่าขยะจาก stack
+    /// </summary>
+    internal static PointerSample Parse(in PointerInfo info, in PointerPenInfo pen, bool hasPenInfo)
+    {
+        var flags = info.PointerFlags;
+        var inContact = flags.HasFlag(PointerFlags.InContact);
+        var inRange = flags.HasFlag(PointerFlags.InRange);
+
+        // POINTER_FLAG_CONFIDENCE หายไป = อุปกรณ์ฟันธงว่าสัมผัสนี้ "ไม่ตั้งใจ" (ฝ่ามือ) ใช้กับ touch เท่านั้น
+        var palm = info.PointerType == PointerInputType.Touch &&
+                   !flags.HasFlag(PointerFlags.Confidence);
+
+        var pressure = 0.5;
+        var eraser = false;
+        var tilt = double.NaN;
+        var orientation = double.NaN;
+
+        if (hasPenInfo && info.PointerType == PointerInputType.Pen)
+        {
+            // PEN_FLAG_ERASER = ปุ่มยางลบ, PEN_FLAG_INVERTED = กลับด้าน (ใช้ปลายยางลบ)
+            eraser = pen.PenFlags.HasFlag(PenFlags.Eraser) ||
+                     pen.PenFlags.HasFlag(PenFlags.Inverted);
+
+            if (pen.PenMask.HasFlag(PenMask.Pressure) && pen.Pressure <= PressureMax)
+            {
+                pressure = pen.Pressure / (double)PressureMax;
+            }
+
+            if (pen.PenMask.HasFlag(PenMask.TiltX) || pen.PenMask.HasFlag(PenMask.TiltY))
+            {
+                // tiltX/tiltY เป็นองศา -90..+90 ตาม MSDN ไม่ใช่ 0..9000
+                var tx = Math.Clamp(pen.TiltX, -TiltDegreesMax, TiltDegreesMax);
+                var ty = Math.Clamp(pen.TiltY, -TiltDegreesMax, TiltDegreesMax);
+                tilt = Math.Sqrt((double)tx * tx + (double)ty * ty);
+            }
+
+            if (pen.PenMask.HasFlag(PenMask.Rotation) && pen.Rotation < RotationDegreesMax)
+            {
+                orientation = pen.Rotation;
+            }
+        }
+
+        return new PointerSample(
+            info.PointerType,
+            (int)info.PointerId,
+            info.PtPixelLocation.X,
+            info.PtPixelLocation.Y,
+            pressure,
+            inContact,
+            inRange,
+            eraser,
+            palm,
+            tilt,
+            orientation);
     }
 }

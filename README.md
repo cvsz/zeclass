@@ -160,9 +160,17 @@ The primary input path is the Win32 pointer-message stack (`WM_POINTERDOWN/UPDAT
 pressure, eraser-tip identity, tilt, palm flags, and stable contact ids for USB touch panels; the
 legacy WPF stylus stack drops pressure on most vendor digitizers.
 
-The fallback is the WPF stylus and touch events plus mouse, used when pointer registration is
-refused. Both paths produce the same `PointerSample`, so the ink engine is unaware of which is
-active. The Diagnostics panel reports which one is in use.
+Pen and touch contacts are handled exclusively on this path. Mouse contacts stay on the WPF mouse
+events, because Windows does not generate `WM_POINTER` for mouse input unless a window opts in with
+`EnableMouseInPointer` (this app never does). The WPF stylus and touch events are consumed without
+drawing so WPF's promotion engine cannot turn the same contact into a second stroke through the
+mouse path. Both paths produce the same `PointerSample`, so the ink engine is unaware of which is
+active. The Diagnostics panel reports the active path.
+
+An earlier build tried to opt in with `RegisterPointerInputTarget`. That API registers a *global*
+redirection target for all input of a type and requires UI Access, so it always failed with
+`ERROR_ACCESS_DENIED`; it was removed rather than left as dead code. Registering is not needed:
+Windows posts `WM_POINTER` to the window under the pointer automatically.
 
 ## Known limitations
 
