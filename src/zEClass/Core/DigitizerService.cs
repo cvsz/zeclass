@@ -7,6 +7,7 @@ using System.Security;
 using System.Text;
 using zEClass.Core;
 using Microsoft.Win32;
+using Microsoft.Win32.SafeHandles;
 
 namespace zEClass.Core;
 
@@ -51,6 +52,9 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
 {
     private const uint DigcfPresent = 0x00000002;
     private const uint DigcfDeviceInterface = 0x00000010;
+    private const uint FileReadAttributes = 0x00000080;
+    private const uint ShareReadWrite = 0x00000003;
+    private const uint OpenExisting = 3;
 
     /// <summary>Known interactive-panel and pen-digitizer USB vendor IDs.</summary>
     private static readonly HashSet<ushort> PanelVendors = new()
@@ -111,10 +115,13 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
                         break;
                     }
 
+                    // Size probe: this call intentionally fails with ERROR_INSUFFICIENT_BUFFER
+                    // and only reports the byte count the real call needs, so the boolean
+                    // result carries no information. Only a zero byte count means give up.
                     WriteCbSize(ifData, ifDataSize);
-                    if (!SetupDiGetDeviceInterfaceDetail(hDevInfo, ifData, IntPtr.Zero, 0,
-                            out var required, out _)
-                        || required == 0)
+                    _ = SetupDiGetDeviceInterfaceDetail(hDevInfo, ifData, IntPtr.Zero, 0,
+                        out var required, IntPtr.Zero);
+                    if (required == 0)
                     {
                         continue;
                     }
@@ -124,14 +131,16 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
                     {
                         WriteCbSize(detail, detailSize);
                         if (!SetupDiGetDeviceInterfaceDetail(hDevInfo, ifData, detail, required,
-                                out _, out _))
+                                out _, IntPtr.Zero))
                         {
                             continue;
                         }
 
-                        // DevicePath starts at offset 6 (4-byte cbSize + first WCHAR) on both
-                        // x86 and x64.
-                        var path = Marshal.PtrToStringUni(detail + 6);
+                        // SP_DEVICE_INTERFACE_DETAIL_DATA_W stores DWORD cbSize at offset 0
+                        // and the WCHAR path at offset 4 (WCHAR aligns to 2) on x86 and x64
+                        // alike. Reading at offset 6 drops a leading backslash, so no API
+                        // accepts the result.
+                        var path = Marshal.PtrToStringUni(detail + 4);
                         if (!string.IsNullOrEmpty(path))
                         {
                             found.Add(Describe(path!));
@@ -160,20 +169,33 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
 
     private static DigitizerDeviceInfo Describe(string path)
     {
-        var attributes = new HidAttributes[1];
         ushort vid = 0;
         ushort pid = 0;
-        if (HidD_GetAttributes(path, attributes))
-        {
-            vid = attributes[0].VendorID;
-            pid = attributes[0].ProductID;
-        }
-
-        var buffer = new byte[512];
         string? manufacturer = null;
-        if (HidD_GetManufacturerString(path, buffer, buffer.Length) && buffer[0] != 0)
+
+        // HidD_GetAttributes and HidD_GetManufacturerString take an open device handle, not
+        // a path string; passing a path makes them fail with ERROR_INVALID_HANDLE and leaves
+        // VID/PID at zero. FILE_READ_ATTRIBUTES with read/write sharing is the read-only way
+        // in, and a device that refuses the open degrades to unknown ids instead of crashing.
+        using var handle = CreateFileW(path, FileReadAttributes, ShareReadWrite,
+            IntPtr.Zero, OpenExisting, 0, IntPtr.Zero);
+        if (!handle.IsInvalid)
         {
-            manufacturer = Decode(buffer);
+            var attributes = new HidAttributes
+            {
+                Size = (uint)Marshal.SizeOf<HidAttributes>(),
+            };
+            if (HidD_GetAttributes(handle, ref attributes))
+            {
+                vid = attributes.VendorID;
+                pid = attributes.ProductID;
+            }
+
+            var buffer = new byte[512];
+            if (HidD_GetManufacturerString(handle, buffer, buffer.Length) && buffer[0] != 0)
+            {
+                manufacturer = Decode(buffer);
+            }
         }
 
         var kind = InferKind(path, vid);
@@ -293,10 +315,13 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
         }
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    // sizeof(HIDD_ATTRIBUTES) is 12 bytes on x86 and x64 (ULONG plus three USHORTs padded
+    // to the 4-byte alignment of the ULONG). hid.dll writes the whole structure, so a
+    // packed 10-byte layout would let the native write run past the managed field.
+    [StructLayout(LayoutKind.Sequential)]
     private struct HidAttributes
     {
-        public int Size;
+        public uint Size;
         public ushort VendorID;
         public ushort ProductID;
         public ushort VersionNumber;
@@ -306,11 +331,16 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
     private static extern IntPtr SetupDiGetClassDevs(ref Guid classGuid, string? enumerator, IntPtr hwnd,
         uint flags);
 
-    [DllImport("setupapi.dll", SetLastError = true)]
+    // CharSet.Unicode is load-bearing: setupapi.dll exports only the W and A spellings, so
+    // without it the marshaller binds SetupDiGetDeviceInterfaceDetailA, whose size probe
+    // reports zero bytes here and whose result would be ANSI text read as UTF-16. The last
+    // parameter is PSP_DEVINFO_DATA, not a DEVINST; a non-null pointer to an unzeroed
+    // structure fails with ERROR_INVALID_PARAMETER (1784), so callers pass IntPtr.Zero.
+    [DllImport("setupapi.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetupDiGetDeviceInterfaceDetail(IntPtr hDevInfo,
         IntPtr deviceInterfaceData, IntPtr deviceInterfaceDetailData,
-        uint deviceInterfaceDetailDataSize, out uint requiredSize, out IntPtr deviceInstanceId);
+        uint deviceInterfaceDetailDataSize, out uint requiredSize, IntPtr devInfoData);
 
     [DllImport("setupapi.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -325,14 +355,20 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
     [DllImport("hid.dll", SetLastError = true)]
     private static extern void HidD_GetHidGuid(out Guid guid);
 
-    [DllImport("hid.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFileW(string fileName, uint desiredAccess,
+        uint shareMode, IntPtr securityAttributes, uint creationDisposition,
+        uint flagsAndAttributes, IntPtr templateFile);
+
+    [DllImport("hid.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool HidD_GetAttributes(string path,
-        [In, Out] HidAttributes[] attributes);
+    private static extern bool HidD_GetAttributes(SafeFileHandle handle,
+        ref HidAttributes attributes);
 
     [DllImport("hid.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool HidD_GetManufacturerString(string path, byte[] buffer, int bufferLength);
+    private static extern bool HidD_GetManufacturerString(SafeFileHandle handle, byte[] buffer,
+        int bufferLength);
 }
 
 /// <summary>Aggregated readiness view shown in the board diagnostics panel.</summary>
