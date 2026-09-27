@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore zEClass.sln
+
+      - name: Format check
+        run: dotnet format zEClass.sln --verify-no-changes --verbosity minimal
+
+      - name: Build (Release, warnings as errors)
+        run: dotnet build zEClass.sln --configuration Release --no-restore
+
+      - name: Unit and integration tests
+        run: >
+          dotnet test tests/zEClass.Tests/zEClass.Tests.csproj
+          --configuration Release --no-build
+          --filter "Category!=Soak"
+          --logger "console;verbosity=normal"
+
+      - name: Soak tests
+        run: >
+          dotnet test tests/zEClass.Tests/zEClass.Tests.csproj
+          --configuration Release --no-build
+          --filter "Category=Soak"
+          --logger "console;verbosity=normal"
+
+      - name: Dependency vulnerability audit
+        shell: pwsh
+        run: |
+          $out = dotnet list zEClass.sln package --vulnerable --include-transitive | Out-String
+          $out | Write-Host
+          if ($out -match 'has the following vulnerable packages') {
+            if ($out -match '\[(Critical|High)\]') {
+              Write-Error 'High or Critical vulnerable packages found.'
+              exit 1
+            }
+            Write-Warning 'Vulnerable packages below the High threshold; recorded but not failing.'
+          }
+
+      - name: Workflow hygiene
+        shell: pwsh
+        run: |
+          $bad = @()
+          $files = Get-ChildItem .github/workflows -Filter *.yml -File
+          foreach ($f in $files) {
+            $text = Get-Content $f.FullName -Raw
+            foreach ($m in [regex]::Matches($text, 'uses:\s*([^\r\n#]+)')) {
+              $ref = $m.Groups[1].Value.Trim().Trim("'", '"')
+              if ($ref -match '@(v\d+(\.\d+)*|main|master|latest)$') {
+                $bad += "$($f.Name): mutable action ref $ref"
+              }
+              if ($ref.StartsWith('docker://')) {
+                $bad += "$($f.Name): container action $ref"
+              }
+            }
+            if ($text -notmatch '(?m)^permissions:') {
+              $bad += "$($f.Name): missing top-level permissions block"
+            }
+            if ($text -match '\$\{\{\s*github\.event\.') {
+              $bad += "$($f.Name): event context interpolated into the workflow"
+            }
+            $prt = 'pull' + '_request_' + 'target'
+            if ($text -match $prt) {
+              $bad += "$($f.Name): $prt is forbidden"
+            }
+          }
+          if ($bad.Count -gt 0) {
+            $bad | ForEach-Object { Write-Error $_ }
+            exit 1
+          }
+          Write-Host "Workflow hygiene clean ($($files.Count) files)."
+
+      - name: PowerShell static analysis
+        shell: pwsh
+        run: |
+          $files = @()
+          foreach ($dir in @('.github', 'tools', 'src', 'tests')) {
+            if (Test-Path $dir) {
+              $files += Get-ChildItem $dir -Recurse -Include *.ps1, *.psm1 -File -ErrorAction SilentlyContinue
+            }
+          }
+          $files += Get-ChildItem . -Filter *.ps1 -File -ErrorAction SilentlyContinue
+          if (-not $files) {
+            Write-Host 'No PowerShell files in the repository to analyze.'
+            exit 0
+          }
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force -AllowClobber
+          $findings = @()
+          foreach ($f in $files) {
+            $findings += Invoke-ScriptAnalyzer -Path $f.FullName -Severity Error
+          }
+          if ($findings.Count -gt 0) {
+            $findings | Format-Table -AutoSize | Out-String | Write-Host
+            Write-Error 'PSScriptAnalyzer reported errors.'
+            exit 1
+          }
+          Write-Host "PSScriptAnalyzer clean ($($files.Count) files)."
+
+      - name: Publish (all supported RIDs)
+        shell: pwsh
+        run: |
+          foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
+            $out = Join-Path 'publish' $rid
+            dotnet publish src/zEClass/zEClass.csproj --configuration Release -r $rid --self-contained true --output $out
+            if ($LASTEXITCODE -ne 0) { throw "publish failed for $rid" }
+            $exe = Join-Path $out 'zEClass.exe'
+            if (-not (Test-Path $exe)) { throw "missing $exe" }
+            $bytes = [System.IO.File]::ReadAllBytes($exe)
+            if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+              throw "$exe is not a valid PE file"
+            }
+          }
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          $lines = foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
+            $exe = Join-Path (Join-Path 'publish' $rid) 'zEClass.exe'
+            $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $rid/zEClass.exe"
+          }
+          $lines | Set-Content (Join-Path 'publish' 'SHA256SUMS.txt') -Encoding ascii
+          $lines | ForEach-Object { Write-Host $_ }
+
+      - name: SBOM
+        shell: pwsh
+        run: |
+          dotnet tool restore
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet cyclonedx src/zEClass/zEClass.csproj --output sbom --output-format Json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path (Join-Path 'sbom' 'bom.json'))) {
+            Write-Error 'SBOM was not generated.'
+            exit 1
+          }
+          Write-Host "SBOM: $(Join-Path 'sbom' 'bom.json')"
+
+      - name: Upload publish artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: publish-${{ github.run_number }}
+          path: |
+            publish/
+            sbom/
+          if-no-files-found: error
+          retention-days: 14

@@ -116,16 +116,26 @@ It is wired in two places, because they need different mechanisms:
 
 ## Build, test, publish
 
-    dotnet build src\zEClass\zEClass.csproj -c Release
+    dotnet build zEClass.sln -c Release
     dotnet test  tests\zEClass.Tests\zEClass.Tests.csproj -c Release
     powershell -ExecutionPolicy Bypass -File build\publish.ps1
     powershell -ExecutionPolicy Bypass -File build\install.ps1
 
-Verified on Windows 11 build 26100 with .NET SDK 8.0.425: 0 warnings, 0 errors, 428 tests
-total: 427 passing and 1 conditional vendor-manual skip. Set `ZECLASS_VENDOR_MANUAL` to a local
-vendor-manual PDF to run the remaining real-document check. The self-contained win-x64 publish launches cleanly, and `install.ps1` has been run
-end to end against a real per-user install directory, including the digitizer precheck and a
-start-and-close verification.
+Verified on Windows 11 build 26100 with .NET SDK 8.0.425 (pinned in `global.json`): 0 warnings,
+0 errors, 460 tests total: 459 passing and 1 conditional vendor-manual skip. Set
+`ZECLASS_VENDOR_MANUAL` to a local vendor-manual PDF to run the remaining real-document check.
+The self-contained win-x64 publish launches cleanly, and `install.ps1` has been run end to end
+against a real per-user install directory, including the digitizer precheck and a start-and-close
+verification.
+
+Continuous integration (`.github/workflows/`) runs on Windows runners: restore, format check,
+Release build with warnings as errors, unit and integration tests, a separate soak step, a
+dependency vulnerability audit, workflow hygiene checks (SHA-pinned actions, least-privilege
+permissions), PSScriptAnalyzer, then publishes all three RIDs with a PE check, SHA-256 checksums
+and a CycloneDX SBOM. CodeQL analyzes every push and pull request; dependency review fails pull
+requests that add a high-severity vulnerable package; the release workflow on `v*` tags re-runs
+the gates, packages each RID, and blocks the release when signing is required but not configured
+(`RELEASE_SIGNING_REQUIRED` / `RELEASE_SIGNING_THUMBPRINT`).
 
 The soak tests are tagged so the fast loop stays fast:
 

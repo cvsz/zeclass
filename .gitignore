@@ -11,3 +11,6 @@ artifacts/
 
 # Runtime output
 *.log
+publish/
+sbom/
+test-results/

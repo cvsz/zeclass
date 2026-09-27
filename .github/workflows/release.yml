@@ -1,0 +1,152 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      RELEASE_SIGNING_REQUIRED: ${{ vars.RELEASE_SIGNING_REQUIRED }}
+      RELEASE_SIGNING_THUMBPRINT: ${{ secrets.RELEASE_SIGNING_THUMBPRINT }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore zEClass.sln
+
+      - name: Build (Release, warnings as errors)
+        run: dotnet build zEClass.sln --configuration Release --no-restore
+
+      - name: Tests (including soak)
+        run: >
+          dotnet test tests/zEClass.Tests/zEClass.Tests.csproj
+          --configuration Release --no-build
+          --logger "console;verbosity=normal"
+
+      - name: Dependency vulnerability audit
+        shell: pwsh
+        run: |
+          $out = dotnet list zEClass.sln package --vulnerable --include-transitive | Out-String
+          $out | Write-Host
+          if ($out -match 'has the following vulnerable packages') {
+            if ($out -match '\[(Critical|High)\]') {
+              Write-Error 'High or Critical vulnerable packages found; the release is blocked.'
+              exit 1
+            }
+            Write-Warning 'Vulnerable packages below the High threshold; recorded but not failing.'
+          }
+
+      - name: Signing gate
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_SIGNING_REQUIRED -ne 'true') {
+            Write-Host 'RELEASE_SIGNING_REQUIRED is not "true": publishing an unsigned pilot build.'
+            exit 0
+          }
+          if ([string]::IsNullOrWhiteSpace($env:RELEASE_SIGNING_THUMBPRINT)) {
+            Write-Error 'Production signing is required but RELEASE_SIGNING_THUMBPRINT is not configured. Release blocked.'
+            exit 1
+          }
+          Write-Host 'Production signing is required; the certificate thumbprint is configured.'
+
+      - name: Publish (all supported RIDs)
+        shell: pwsh
+        run: |
+          $requireSigning = $env:RELEASE_SIGNING_REQUIRED -eq 'true'
+          foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
+            $out = Join-Path 'publish' $rid
+            $extra = @()
+            if ($requireSigning) {
+              $extra += @("-p:SignThumbprint=$env:RELEASE_SIGNING_THUMBPRINT")
+            }
+            dotnet publish src/zEClass/zEClass.csproj --configuration Release -r $rid --self-contained true --output $out @extra
+            if ($LASTEXITCODE -ne 0) { throw "publish failed for $rid" }
+            $exe = Join-Path $out 'zEClass.exe'
+            if (-not (Test-Path $exe)) { throw "missing $exe" }
+            $bytes = [System.IO.File]::ReadAllBytes($exe)
+            if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+              throw "$exe is not a valid PE file"
+            }
+            if ($requireSigning) {
+              $signature = Get-AuthenticodeSignature $exe
+              if ($signature.Status -ne 'Valid') {
+                Write-Error "Production signing is required but $exe has signature status $($signature.Status). Release blocked."
+                exit 1
+              }
+              Write-Host "$rid signature: $($signature.Status)"
+            }
+          }
+
+      - name: SBOM
+        shell: pwsh
+        run: |
+          dotnet tool restore
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet cyclonedx src/zEClass/zEClass.csproj --output sbom --output-format Json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sbomPath = Join-Path 'sbom' 'bom.json'
+          if (-not (Test-Path $sbomPath)) {
+            Write-Error 'SBOM was not generated.'
+            exit 1
+          }
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Copy-Item $sbomPath (Join-Path 'artifacts' 'zEClass-bom.json')
+          Write-Host "SBOM: $sbomPath"
+
+      - name: Package release assets
+        shell: pwsh
+        run: |
+          foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
+            $zip = Join-Path 'artifacts' "zEClass-$($env:GITHUB_REF_NAME)-$rid.zip"
+            Compress-Archive -Path (Join-Path (Join-Path 'publish' $rid) '*') -DestinationPath $zip -CompressionLevel Optimal
+            if (-not (Test-Path $zip)) { throw "missing $zip" }
+          }
+          Get-ChildItem artifacts | ForEach-Object { Write-Host "$($_.Name) $($_.Length) bytes" }
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          $lines = foreach ($file in (Get-ChildItem artifacts -File)) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)"
+          }
+          $lines | Set-Content (Join-Path 'artifacts' 'SHA256SUMS.txt') -Encoding ascii
+          $lines | ForEach-Object { Write-Host $_ }
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-${{ github.ref_name }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = @(Get-ChildItem artifacts -File | ForEach-Object { $_.FullName })
+          gh release create $env:GITHUB_REF_NAME --verify-tag --generate-notes --title "zEClass $env:GITHUB_REF_NAME" @assets
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

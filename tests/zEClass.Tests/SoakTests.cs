@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Windows;
 using zEClass.Core;
 using Xunit;
 
@@ -284,5 +285,96 @@ public sealed class SoakTests : IDisposable
         doc.EnsurePages();
         Assert.Equal(31, doc.Pages.Count);
         Assert.Equal(Enumerable.Range(0, 31), doc.Pages.Select(p => p.Index));
+    }
+
+    /// <summary>
+    /// The pen input pipeline under sustained use: samples through the pressure
+    /// normalizer, palm rejection traffic underneath the pen, pen width from the engine,
+    /// and periodic autosaves. The device sets must drain and the history must stay
+    /// bounded no matter how long the session ran.
+    /// </summary>
+    [Fact]
+    public void PenInputSessionStaysConsistent()
+    {
+        var engine = new InkEngine { PalmRejectionEnabled = true };
+        var doc = new BoardDocument { PageCount = 5, Name = "Pen soak" };
+        doc.EnsurePages();
+        var history = new EditHistory(capacity: 200);
+        var rng = new Random(20260927);
+        var draws = 0;
+        var undoRedo = 0;
+        const int stylusId = 7;
+
+        for (var step = 0; step < 6000; step++)
+        {
+            engine.NoteStylusDown(stylusId);
+            engine.NoteTouchDown(step % 3);
+            Assert.True(engine.ShouldIgnoreTouch());
+
+            var stroke = new InkStroke { Kind = StrokeKind.Pen, Width = 4 };
+            for (var i = 0; i < 24; i++)
+            {
+                var sample = engine.CreateSample(
+                    new Point(rng.Next(50, 1870), rng.Next(50, 1030)),
+                    0.3 + (rng.NextDouble() * 0.6),
+                    isStylus: true,
+                    isEraser: false,
+                    deviceId: stylusId);
+                stroke.Points.Add(sample);
+                if (i % 5 == 0)
+                {
+                    stroke.Width = Math.Max(0.5, engine.EffectiveWidth(4, sample));
+                }
+            }
+
+            engine.NoteStylusUp(stylusId);
+            engine.NoteTouchUp(step % 3);
+            Assert.False(engine.ShouldIgnoreTouch());
+
+            history.Execute(doc, new AddStrokesCommand("Draw", [stroke]));
+            draws++;
+
+            if (step % 7 == 6)
+            {
+                undoRedo += history.Undo(doc) ? 1 : 0;
+            }
+            else if (step % 7 == 3)
+            {
+                undoRedo += history.Redo(doc) ? 1 : 0;
+            }
+
+            if (step % 97 == 0)
+            {
+                // Page churn stays balanced through undo, so the document must end
+                // every cycle exactly where it started.
+                var pagesBefore = doc.Pages.Count;
+                history.Execute(doc, new AddPageCommand());
+                Assert.Equal(pagesBefore + 1, doc.Pages.Count);
+                history.Undo(doc);
+                Assert.Equal(pagesBefore, doc.Pages.Count);
+            }
+
+            if (step % 500 == 0)
+            {
+                var path = Path.Combine(_dir, "pen" + step + ".ebboard");
+                BoardSerializer.Save(doc, path);
+                var reloaded = BoardSerializer.Load(path);
+                Assert.Equal(doc.Pages.Count, reloaded.Pages.Count);
+                Assert.Equal(doc.ActivePage, reloaded.ActivePage);
+                File.Delete(path);
+            }
+        }
+
+        Assert.Equal(0, engine.ActiveStylusCount);
+        Assert.Equal(0, engine.ActiveTouchCount);
+        Assert.InRange(history.UndoCount, 0, history.Capacity);
+        Assert.InRange(doc.Pages.Count, 1, BoardDocument.MaxPageCount);
+        Assert.Equal(
+            Enumerable.Range(0, doc.Pages.Count),
+            doc.Pages.Select(p => p.Index));
+        Assert.InRange(doc.ActivePage, 0, doc.Pages.Count - 1);
+        Assert.InRange(doc.Pages.Sum(p => p.Strokes.Count), 1, draws);
+        Assert.True(draws > 0 && undoRedo > 0,
+            $"expected both draws and undo/redo, saw {draws}/{undoRedo}");
     }
 }
