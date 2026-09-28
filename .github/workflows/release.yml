@@ -1,0 +1,239 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      RELEASE_SIGNING_REQUIRED: ${{ vars.RELEASE_SIGNING_REQUIRED }}
+      SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+      SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore zEClass.sln
+
+      - name: Build (Release, warnings as errors)
+        run: dotnet build zEClass.sln --configuration Release --no-restore
+
+      - name: Tests (including soak)
+        run: >
+          dotnet test tests/zEClass.Tests/zEClass.Tests.csproj
+          --configuration Release --no-build
+          --logger "console;verbosity=normal"
+
+      - name: Dependency vulnerability audit
+        shell: pwsh
+        run: |
+          $out = dotnet list zEClass.sln package --vulnerable --include-transitive | Out-String
+          $out | Write-Host
+          if ($out -match 'has the following vulnerable packages') {
+            if ($out -match '\[(Critical|High)\]') {
+              Write-Error 'High or Critical vulnerable packages found; the release is blocked.'
+              exit 1
+            }
+            Write-Warning 'Vulnerable packages below the High threshold; recorded but not failing.'
+          }
+
+      - name: Signing gate
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_SIGNING_REQUIRED -ne 'true') {
+            Write-Host 'RELEASE_SIGNING_REQUIRED is not "true": publishing an unsigned pilot build.'
+            exit 0
+          }
+          if ([string]::IsNullOrWhiteSpace($env:SIGN_PFX_BASE64) -or [string]::IsNullOrWhiteSpace($env:SIGN_PFX_PASSWORD)) {
+            Write-Error 'Production signing is required but SIGN_PFX_BASE64 or SIGN_PFX_PASSWORD is not configured. Release blocked.'
+            exit 1
+          }
+          Write-Host 'Production signing is required; the certificate and password are configured.'
+
+      - name: Publish (all supported RIDs)
+        shell: pwsh
+        run: |
+          foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
+            $out = Join-Path 'publish' $rid
+            dotnet publish src/zEClass/zEClass.csproj --configuration Release -r $rid --self-contained true --output $out
+            if ($LASTEXITCODE -ne 0) { throw "publish failed for $rid" }
+            $exe = Join-Path $out 'zEClass.exe'
+            if (-not (Test-Path $exe)) { throw "missing $exe" }
+            $bytes = [System.IO.File]::ReadAllBytes($exe)
+            if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+              throw "$exe is not a valid PE file"
+            }
+          }
+
+      - name: Authenticode sign (SignTool)
+        if: env.RELEASE_SIGNING_REQUIRED == 'true'
+        shell: pwsh
+        run: |
+          $pfxBytes = [Convert]::FromBase64String($env:SIGN_PFX_BASE64)
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'sign.pfx'
+          [IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
+          try {
+            foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
+              $exe = Join-Path 'publish' $rid 'zEClass.exe'
+              $signCmd = @(
+                'signtool', 'sign',
+                '/f', $pfxPath,
+                '/p', $env:SIGN_PFX_PASSWORD,
+                '/tr', 'http://timestamp.digicert.com',
+                '/td', 'sha256',
+                '/fd', 'sha256',
+                $exe
+              )
+              & $signCmd
+              if ($LASTEXITCODE -ne 0) { throw "signtool failed for $rid" }
+              $sig = Get-AuthenticodeSignature $exe
+              if ($sig.Status -ne 'Valid') {
+                Write-Error "Signing verification failed for $rid: $($sig.Status)"
+                exit 1
+              }
+              Write-Host "$rid signed and verified: $($sig.Status)"
+            }
+          }
+          finally {
+            if (Test-Path $pfxPath) {
+              Remove-Item $pfxPath -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+      - name: Verify signatures (all builds)
+        shell: pwsh
+        run: |
+          foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
+            $exe = Join-Path 'publish' $rid 'zEClass.exe'
+            $sig = Get-AuthenticodeSignature $exe
+            Write-Host "$rid signature: $($sig.Status) $(if ($sig.SignerCertificate) { $sig.SignerCertificate.Subject })"
+          }
+
+      - name: SBOM
+        shell: pwsh
+        run: |
+          dotnet tool restore
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet cyclonedx src/zEClass/zEClass.csproj --output sbom --output-format Json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sbomPath = Join-Path 'sbom' 'bom.json'
+          if (-not (Test-Path $sbomPath)) {
+            Write-Error 'SBOM was not generated.'
+            exit 1
+          }
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Copy-Item $sbomPath (Join-Path 'artifacts' 'zEClass-bom.json')
+          Write-Host "SBOM: $sbomPath"
+
+      - name: Version consistency (tag vs assembly)
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -notmatch '^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+            Write-Error "Tag '$tag' is not SemVer (expected v1.2.3)."
+            exit 1
+          }
+          $version = $tag.TrimStart('v').Split('-')[0]
+          $csproj = [xml](Get-Content src/zEClass/zEClass.csproj)
+          $declared = $csproj.Project.PropertyGroup.Version
+          if ($declared -ne $version) {
+            Write-Error "Tag version $version does not match csproj Version $declared."
+            exit 1
+          }
+          Write-Host "Version consistent: $tag == $declared"
+
+      - name: Package release assets
+        shell: pwsh
+        run: |
+          foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
+            $zip = Join-Path 'artifacts' "zEClass-$($env:GITHUB_REF_NAME)-$rid.zip"
+            Compress-Archive -Path (Join-Path (Join-Path 'publish' $rid) '*') -DestinationPath $zip -CompressionLevel Optimal
+            if (-not (Test-Path $zip)) { throw "missing $zip" }
+          }
+          Get-ChildItem artifacts | ForEach-Object { Write-Host "$($_.Name) $($_.Length) bytes" }
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          $lines = foreach ($file in (Get-ChildItem artifacts -File)) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)"
+          }
+          $lines | Set-Content (Join-Path 'artifacts' 'SHA256SUMS.txt') -Encoding ascii
+          $lines | ForEach-Object { Write-Host $_ }
+
+      - name: Release manifest
+        shell: pwsh
+        run: |
+          $sbomHash = (Get-FileHash (Join-Path 'artifacts' 'zEClass-bom.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+          $manifest = foreach ($file in (Get-ChildItem artifacts -File | Where-Object { $_.Name -ne 'SHA256SUMS.txt' -and $_.Name -ne 'release-manifest.json' })) {
+            $sig = $null
+            if ($file.Extension -eq '.zip') {
+              $tmp = Join-Path $env:RUNNER_TEMP ("sigcheck-" + $file.BaseName)
+              Expand-Archive -Path $file.FullName -DestinationPath $tmp -Force
+              $exe = Join-Path $tmp '*\zEClass.exe'
+              $hit = Get-Item $exe -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($hit) { $sig = Get-AuthenticodeSignature $hit.FullName }
+              Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+            } else {
+              $sig = Get-AuthenticodeSignature $file.FullName
+            }
+            [ordered]@{
+              product = 'zEClass'
+              version = $env:GITHUB_REF_NAME
+              commit = $env:GITHUB_SHA
+              artifact = $file.Name
+              sha256 = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              size = $file.Length
+              signed = ($sig -and $sig.Status -eq 'Valid')
+              signer = if ($sig -and $sig.SignerCertificate) { $sig.SignerCertificate.Subject } else { $null }
+              sbomSha256 = $sbomHash
+              buildWorkflow = "$env:GITHUB_WORKFLOW"
+              buildRunId = "$env:GITHUB_RUN_ID"
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 4 | Set-Content (Join-Path 'artifacts' 'release-manifest.json') -Encoding utf8
+          Get-Content (Join-Path 'artifacts' 'release-manifest.json')
+          $lines = foreach ($file in (Get-ChildItem artifacts -File | Where-Object { $_.Name -ne 'SHA256SUMS.txt' })) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)"
+          }
+          $lines | Set-Content (Join-Path 'artifacts' 'SHA256SUMS.txt') -Encoding ascii
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-${{ github.ref_name }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = @(Get-ChildItem artifacts -File | ForEach-Object { $_.FullName })
+          gh release create $env:GITHUB_REF_NAME --verify-tag --generate-notes --title "zEClass $env:GITHUB_REF_NAME" @assets
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

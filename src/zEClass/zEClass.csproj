@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>zEClass</AssemblyName>
+    <RootNamespace>zEClass</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\zEClass.ico</ApplicationIcon>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RuntimeIdentifiers>win-x64;win-arm64;win-x86</RuntimeIdentifiers>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Version>1.0.0</Version>
+    <Company>zEClass</Company>
+    <Product>zEClass Interactive Whiteboard</Product>
+    <ProductVersion>1.0.0</ProductVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Deterministic>true</Deterministic>
+    <Platforms>x64;ARM64;x86</Platforms>
+    <!-- Required by LibraryImport source generator (PointerNative.cs); generated code is unsafe. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Deployment defaults. Override on the command line for a specific build. -->
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DebugType>embedded</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <!--
+      Strong-name signing is opt-in: supply a PFX path via -p:SignPfx=cert.pfx.
+      Authenticode signing is performed post-publish by the release workflow
+      using SignTool with a certificate from GitHub secrets.
+    -->
+    <SignAssembly Condition="'$(SignPfx)' != ''">true</SignAssembly>
+    <AssemblyOriginatorKeyFile Condition="'$(SignPfx)' != ''">$(SignPfx)</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- For System.Drawing.Icon frame selection in ApplyIcon. Managed-only on Windows (GDI+
+         is in-box), so this adds no native payload to the install. -->
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Source of truth for the icon; regenerate with tools\IconGen. -->
+    <None Include="Assets\zEClass.ico" Pack="false" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Branding artwork for the About dialog. Loaded defensively at runtime, so a missing
+         file degrades to text rather than a crash. -->
+    <None Include="Assets\*.png" Pack="false" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The test project asserts on a few internal seams (the acceptance run, for example).
+         Narrow and explicit rather than opening the whole assembly up. -->
+    <InternalsVisibleTo Include="zEClass.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Language files are copied so the picker is populated on a fresh install. -->
+    <None Include="lang\*.json" Pack="false" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
