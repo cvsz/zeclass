@@ -17,7 +17,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <!-- Lets a test skip at runtime. xunit v2 has no Assert.Skip, and silently returning would
          make an unexercised importer look like a passing one. -->
-    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.85" />
     <!-- For the window-icon frame-selection tests. Same as the app: managed-only on Windows. -->
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
   </ItemGroup>
