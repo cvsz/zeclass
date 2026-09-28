@@ -51,7 +51,7 @@
   <ItemGroup>
     <!-- For System.Drawing.Icon frame selection in ApplyIcon. Managed-only on Windows (GDI+
          is in-box), so this adds no native payload to the install. -->
-    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>
