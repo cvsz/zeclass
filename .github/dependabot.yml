@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  # The application and its tests are .NET packages restored through the solution.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
