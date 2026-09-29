@@ -28,9 +28,11 @@ are pending on the classroom machine.
 | NDI identity + hash pin | TEST | PASS | `NdiBridgeTests` incl. pin match/mismatch, canonical exec |
 | MCI quoting/refusal/redaction | TEST | PASS | `AudioRecorderTests` hostile-path cases |
 | Diagnostics redaction | TEST | PASS | `ShareableDiagnosticsTests` (3) |
-| Installer rollback/hash scoping | MANUAL/SCAN | NOT RUN | `install.ps1` parses; end-to-end run pending on target machine |
+| Installer rollback/hash scoping | MANUAL (local E2E) | PASS | 4-case matrix on this machine (PS 5.1): fresh install exit 0 + hash verify + app start/stop; reinstall w/o `-Force` exit 3; `-Force` upgrade exit 0 with backup retained; corrupt artifact exit 4 with rollback and previous install hash preserved. Shortcut creation + uninstall not covered. |
+| CI workflow (restore/format/build/tests/soak/audit/hygiene/PSScriptAnalyzer/per-RID publish/SBOM) | CI | PASS | GitHub Actions run success on `db344d3` and `02c691a` (API-verified); `release.yml` tag path still unrun |
+| CodeQL | CI | PASS | CodeQL workflow success on `db344d3` and `02c691a`; GitHub Security pages not browsed from here |
+| dependency-review / PR secret scan | CI | NOT RUN HERE | dependency-review triggers on PRs and no PR has been opened yet; repo-baseline secret-*file-name* check passes in CI |
 | Release manifest/version gate/signing | CI | NOT RUN | steps added to `release.yml`; execute on a `v*` tag |
-| CodeQL/dependency-review/secret-scan | CI | NOT RUN HERE | workflows present; GitHub Security pages not accessible from here |
 | Per-RID publish (x64/ARM64/x86) | CI | NOT RUN HERE | `build/publish.ps1` + CI publish job; needs full NuGet restore |
 | Screen/audio recording limits | TEST | PASS | existing recorder test suites green (26/26 NDI/audio/recording) |
 | Accessibility/keyboard/screen-reader | MANUAL | NOT DONE | automation names present; walkthrough pending |

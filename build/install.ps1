@@ -86,8 +86,12 @@ if ($running) {
 
 if (-not $SkipPrecheck) {
   Write-Step "Digitizer precheck"
-  $hidDevices = @(Get-PnpDevice -Class HID -ErrorAction SilentlyContinue |
+  # -Class HID matches nothing: the PnP class string is HIDClass. Catching the real
+  # class is the whole point of the precheck — with the wrong one this reported
+  # "no device" on a machine with three working touch screens.
+  $hidDevices = @(Get-PnpDevice -Class HIDClass -ErrorAction SilentlyContinue |
     Where-Object { $_.FriendlyName -match 'touch|digitiz|pen|stylus' })
+  $bad = @($hidDevices | Where-Object { $_.Status -ne 'OK' })
   if ($hidDevices.Count -eq 0) {
     Write-Warn2 "No HID touch or pen device detected."
     Write-Warn2 "The board will still install and work with a mouse."
@@ -95,6 +99,9 @@ if (-not $SkipPrecheck) {
   }
   else {
     foreach ($d in $hidDevices) { Write-Ok "$($d.FriendlyName) [$($d.Status)]" }
+    if ($bad.Count -gt 0) {
+      Write-Warn2 "$($bad.Count) digitizer device(s) are not OK; check them in Device Manager."
+    }
   }
 
   $touchEnabled = (Get-ItemProperty `

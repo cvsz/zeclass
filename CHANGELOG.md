@@ -28,6 +28,7 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
 - Diagnostics: exported report is now the shareable redacted form (no full paths, device instance ids, manufacturers); on-screen panel keeps the full local form
 - PDF: bounded reads (TOCTOU-safe capped copy, head+tail page-count scan)
 - Installer: hash/PE verification of staged artifact, rollback to backup on install/verify failure, only stops instances running from the install directory
+- Installer: digitizer precheck now queries `-Class HIDClass` (the previous `-Class HID` matched nothing and always reported "no touch device" even with three working screens); devices not reporting `OK` are flagged for Device Manager
 - Release workflow: SemVer tag check, tag-vs-csproj version gate, per-artifact `release-manifest.json` (hashes, signature status, SBOM binding)
 - Digitizer detection: classification now uses a three-stage fallback — HID caps (`HidP_GetCaps`, usage page 0x0D) when the device can be opened, then the Windows device description (`SPDRP_DEVICEDESC`, e.g. "HID-compliant touch screen"), then path keywords and the known-panel vendor list; "pen"+"touch" descriptions classify as `TouchAndPen`; previously undetectable touch controllers (VID 0483/1FD2) now report `TouchScreen` with pressure
 - Board files: explicit `Version` field stamped on save; load rejects a file claiming an unsupported format version before using its content; files without the field keep loading as version 1
