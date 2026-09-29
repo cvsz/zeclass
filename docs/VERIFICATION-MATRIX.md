@@ -28,7 +28,8 @@ are pending on the classroom machine.
 | NDI identity + hash pin | TEST | PASS | `NdiBridgeTests` incl. pin match/mismatch, canonical exec |
 | MCI quoting/refusal/redaction | TEST | PASS | `AudioRecorderTests` hostile-path cases |
 | Diagnostics redaction | TEST | PASS | `ShareableDiagnosticsTests` (3) |
-| Installer rollback/hash scoping | MANUAL (local E2E) | PASS | 4-case matrix on this machine (PS 5.1): fresh install exit 0 + hash verify + app start/stop; reinstall w/o `-Force` exit 3; `-Force` upgrade exit 0 with backup retained; corrupt artifact exit 4 with rollback and previous install hash preserved. Shortcut creation + uninstall not covered. |
+| Installer rollback/hash scoping | MANUAL (local E2E) | PASS | 4-case install matrix on this machine (PS 5.1): fresh install exit 0 + hash verify + app start/stop; reinstall w/o `-Force` exit 3; `-Force` upgrade exit 0 with backup retained; corrupt artifact exit 4 with rollback and previous install hash preserved |
+| Uninstaller scoped removal | MANUAL (local E2E) | PASS | 6-case matrix (PS 5.1): uninstall exit 0 with user data kept; idempotent re-run exit 3; running instance from install dir stopped then removed; `-Backup` moves aside; `-PurgeUserData` removes profile only on explicit flag; shortcuts created on install and removed on uninstall (Desktop + Start Menu), foreign processes/installs untouched |
 | CI workflow (restore/format/build/tests/soak/audit/hygiene/PSScriptAnalyzer/per-RID publish/SBOM) | CI | PASS | GitHub Actions run success on `db344d3` and `02c691a` (API-verified); `release.yml` tag path still unrun |
 | CodeQL | CI | PASS | CodeQL workflow success on `db344d3` and `02c691a`; GitHub Security pages not browsed from here |
 | dependency-review / PR secret scan | CI | NOT RUN HERE | dependency-review triggers on PRs and no PR has been opened yet; repo-baseline secret-*file-name* check passes in CI |
