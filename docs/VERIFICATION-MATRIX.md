@@ -7,7 +7,7 @@ are pending on the classroom machine.
 | Claim | Method | Result | Evidence / limitation |
 |---|---|---|---|
 | Release build, 0 warnings/errors | TEST | PASS | `dotnet build zEClass.sln -c Release`, 0/0 |
-| Unit+integration 559 pass, 1 conditional skip | TEST | PASS | `dotnet test --filter Category!=Soak`; skip = vendor-manual PDF (`ZECLASS_VENDOR_MANUAL`) |
+| Unit+integration 568 pass, 1 conditional skip | TEST | PASS | `dotnet test --filter Category!=Soak`; skip = vendor-manual PDF (`ZECLASS_VENDOR_MANUAL`) |
 | Soak 6/6 | TEST | PASS | history bounds, round-trip stability, erase ordering |
 | Format clean | TEST | PASS | `dotnet format --verify-no-changes` |
 | No vulnerable packages | DEPENDENCY-SCAN | PASS | `dotnet list package --vulnerable --include-transitive`: none |
@@ -20,9 +20,9 @@ are pending on the classroom machine.
 | Crash-safe save (tmp→flush→rename, .bak, read-back) | TEST | PASS | backup retention, locked target, missing parent, Unicode + >260-char paths TEST-covered; read-back short-write restore present in code but not fault-injected (true ENOSPC not simulable in this environment) |
 | Stale temp recovery | TEST | PASS | promote valid orphan, `.corrupt` aside, delete debris beside primary, no-op on missing dir |
 | Recorder failure paths | TEST | PASS | low-disk trip finalizes prefix, interrupted swap leaves no debris, dispose finalizes, bad target clean fail |
-| Performance budgets (explicit ms) | TEST | PASS | 10k-stroke save/load <10 s, hostile max-cap load <5 s, 1000 page lookups <2 s |
+| Performance budgets (explicit ms) | TEST | PASS | 10k-stroke save/load <10 s, hostile max-cap load <5 s, 1000 page lookups <2 s, mixed import batch (images + Office preview + PDF parse) <5 s |
 | Touch/pen/pressure/tilt/palm/gestures/calibration | HARDWARE | NOT DONE | no panel on this machine; use in-app Acceptance test on panel PC |
-| Office ZIP bombs/traversal/mislabel | TEST | PASS | 33/33 `ImporterTests` incl. bomb, traversal, ratio, caps |
+| Office ZIP bombs/traversal/mislabel | TEST | PASS | 42/42 `ImporterTests` incl. bomb, traversal, ratio, caps, plus the full §12 fixture matrix (EMF, WMF, no-preview, malformed ZIP, DOCX media, PNG/JPEG content-beats-name, DOCM/PPTM) |
 | Board aggregate caps | TEST | PASS | `BoardSerializerTests` trim/budget/clamp cases |
 | Save-As transactional, dirty prompts, autosave revisions, recovery predicate | TEST | PASS | `DocumentSessionTests` (12); UI wiring thin and untested headless |
 | Import staging lifecycle | TEST | PASS | `ImportStagingTests` (5) |
@@ -31,8 +31,8 @@ are pending on the classroom machine.
 | Diagnostics redaction | TEST | PASS | `ShareableDiagnosticsTests` (3) |
 | Installer rollback/hash scoping | MANUAL (local E2E) | PASS | 4-case install matrix on this machine (PS 5.1): fresh install exit 0 + hash verify + app start/stop; reinstall w/o `-Force` exit 3; `-Force` upgrade exit 0 with backup retained; corrupt artifact exit 4 with rollback and previous install hash preserved |
 | Uninstaller scoped removal | MANUAL (local E2E) | PASS | 6-case matrix (PS 5.1): uninstall exit 0 with user data kept; idempotent re-run exit 3; running instance from install dir stopped then removed; `-Backup` moves aside; `-PurgeUserData` removes profile only on explicit flag; shortcuts created on install and removed on uninstall (Desktop + Start Menu), foreign processes/installs untouched |
-| CI workflow (restore/format/build/tests/soak/audit/hygiene/PSScriptAnalyzer/per-RID publish/SBOM) | CI | PASS | GitHub Actions run success on every push through `86a6924` (API-verified: `db344d3`, `02c691a`, `c86f9ed`, `d7c3bee`, `52e9ef7`, `86a6924`); `release.yml` tag path still unrun |
-| CodeQL | CI | PASS | CodeQL workflow success on `db344d3`, `02c691a`, `c86f9ed`, `d7c3bee`, `52e9ef7` (API-verified); GitHub Security pages not browsed from here |
+| CI workflow (restore/format/build/tests/soak/audit/hygiene/PSScriptAnalyzer/per-RID publish/SBOM) | CI | PASS | GitHub Actions run success on every push through `baac507` (API-verified: `db344d3`, `02c691a`, `c86f9ed`, `d7c3bee`, `52e9ef7`, `86a6924`, `3276f04`, `baac507`; `91e76be` CI run cancelled by `cancel-in-progress`, superseded — not a failure); `release.yml` tag and dispatch paths still unrun |
+| CodeQL | CI | PASS | CodeQL workflow success on every push through `baac507` (API-verified for `db344d3`…`52e9ef7`, `91e76be`, `3276f04`, `baac507`); GitHub Security pages not browsed from here |
 | dependency-review / PR secret scan | CI | NOT RUN HERE | dependency-review triggers on PRs and no PR has been opened yet; repo-baseline secret-*file-name* check passes in CI |
 | Release manifest/version gate/signing | CI + MANUAL (local dry run) | PARTIAL | `release.yml` now also accepts `workflow_dispatch` as a no-publish dry run (tag gates swap to csproj SemVer, GitHub-release step push-only) — still unrun here (needs a click in the Actions tab or a token); local Authenticode round-trip with a throwaway cert VERIFIED-BY-MANUAL: sign → DigiCert RFC 3161 timestamp embedded → verifier reports `UnknownError`/`UntrustedRoot` (correctly refuses an untrusted signer) → throwaway cert and temp removed from all stores. NOT RUN: `signtool` invocation (no Windows SDK locally; runner-provided), real PFX secrets, `Status=Valid` (requires production certificate) |
 | Per-RID publish (x64/ARM64/x86) | CI + LOCAL | PASS (build/package) | CI publish job green on every push through `86a6924`; local `publish.ps1 -Runtime all` produced `artifacts\{win-x64,win-arm64,win-x86}` with SHA-256 in `BUILDINFO.txt`. Only the x64 binary is executed on this machine |

@@ -1,7 +1,7 @@
 # zEClass: production roadmap
 
 What a classroom-ready whiteboard needs, in build order. Status reflects the code as it stands.
-**566 tests total: 565 passing, 1 conditional skip**, release build clean, format clean, NuGet audit clean.
+**575 tests total: 574 passing, 1 conditional skip**, release build clean, format clean, NuGet audit clean.
 
 ## Phase 1: editing model
 
@@ -95,7 +95,7 @@ Calculator, ruler, compass, set square, protractor, table sheet: all done.
 
 | Item | Status |
 |---|---|
-| Unit tests per area | done, 566 total (565 passing, 1 conditional vendor-manual skip) |
+| Unit tests per area | done, 575 total (574 passing, 1 conditional vendor-manual skip) |
 | Real hardware test matrix (IR board, capacitive panel, pen, mouse) | **not done: highest remaining risk** |
 | Keyboard-only walkthrough | not done |
 | Screen-reader pass | not done |

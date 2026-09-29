@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -479,6 +480,152 @@ public sealed class ImporterTests : IDisposable
         Assert.False(OfficePreviewExtractor.IsSafeEntryName("ppt:media:back.png"));
         Assert.True(OfficePreviewExtractor.IsSafeEntryName("ppt/media/ok.png"));
         Assert.True(OfficePreviewExtractor.IsSafeEntryName("docProps/thumbnail.jpeg"));
+    }
+
+    [Fact]
+    public void Extract_EmfPayload_IsSavedAsEmfByContent()
+    {
+        // AGENTS §12 fixture: EMF media. The header is an EMF record type 1
+        // with a plausible size; the extension must come from the bytes.
+        var emf = new byte[96];
+        emf[0] = 0x01;
+        var file = BuildZip("art.pptx", ("ppt/media/art.emf", emf));
+
+        var extracted = OfficePreviewExtractor.Extract(
+            file, new OfficePreviewExtractor.ZipLimits());
+
+        Assert.NotNull(extracted);
+        Assert.Equal(".emf", Path.GetExtension(extracted));
+        Assert.Equal(emf, File.ReadAllBytes(extracted));
+    }
+
+    [Fact]
+    public void Extract_WmfPayload_IsSavedAsWmfByContent()
+    {
+        // AGENTS §12 fixture: WMF media, identified by the placeable signature.
+        var wmf = new byte[] { 0xD7, 0xCD, 0xC6, 0x9A, 0, 0, 0, 0 };
+        var file = BuildZip("chart.pptx", ("ppt/media/chart.wmf", wmf));
+
+        var extracted = OfficePreviewExtractor.Extract(
+            file, new OfficePreviewExtractor.ZipLimits());
+
+        Assert.NotNull(extracted);
+        Assert.Equal(".wmf", Path.GetExtension(extracted));
+        Assert.Equal(wmf, File.ReadAllBytes(extracted));
+    }
+
+    [Fact]
+    public void Extract_PngPayloadInEmfEntry_IsNeverSavedAsEmf()
+    {
+        // AGENTS §12: "Do not save a PNG/JPEG payload as .emf" — content beats name.
+        var file = BuildZip("fake.pptx", ("ppt/media/fake.emf", PngBytes()));
+
+        var extracted = OfficePreviewExtractor.Extract(
+            file, new OfficePreviewExtractor.ZipLimits());
+
+        Assert.NotNull(extracted);
+        Assert.Equal(".png", Path.GetExtension(extracted));
+        Assert.Equal(PngBytes(), File.ReadAllBytes(extracted));
+    }
+
+    [Fact]
+    public void Extract_JpegPayloadInPngEntry_IsSavedAsJpg()
+    {
+        // The other direction of the same rule: JPEG bytes keep their real type.
+        var jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0, 0 };
+        var file = BuildZip("photo.pptx", ("ppt/media/photo.png", jpeg));
+
+        var extracted = OfficePreviewExtractor.Extract(
+            file, new OfficePreviewExtractor.ZipLimits());
+
+        Assert.NotNull(extracted);
+        Assert.Equal(".jpg", Path.GetExtension(extracted));
+        Assert.Equal(jpeg, File.ReadAllBytes(extracted));
+    }
+
+    [Fact]
+    public void Extract_DeckWithoutMedia_ReturnsNull()
+    {
+        // AGENTS §12 fixture: "no preview" — a valid package with nothing to show.
+        var file = BuildZip("bare.pptx", ("ppt/presentation.xml", Encoding_Latin1("<p:presentation/>")));
+
+        Assert.Null(OfficePreviewExtractor.Extract(
+            file, new OfficePreviewExtractor.ZipLimits()));
+    }
+
+    [Fact]
+    public void Extract_MalformedZip_ReturnsNull()
+    {
+        // AGENTS §12 fixture: malformed ZIP — a zip signature with no archive behind it.
+        var file = Path.Combine(_dir, "bad.pptx");
+        File.WriteAllBytes(file, [0x50, 0x4B, 0x03, 0x04]);
+
+        Assert.Null(OfficePreviewExtractor.Extract(
+            file, new OfficePreviewExtractor.ZipLimits()));
+    }
+
+    [Fact]
+    public void Extract_WordMedia_IsExtractedFromDocx()
+    {
+        // AGENTS §12 fixture: valid DOCX with media.
+        var file = BuildZip("spec.docx", ("word/media/diagram.png", PngBytes()));
+
+        var extracted = OfficePreviewExtractor.Extract(
+            file, new OfficePreviewExtractor.ZipLimits());
+
+        Assert.NotNull(extracted);
+        Assert.Equal(PngBytes(), File.ReadAllBytes(extracted));
+    }
+
+    [Fact]
+    public void MacroEnabledOpenXml_IsSupportedAndExtractable()
+    {
+        // AGENTS §12: DOCM/PPTM must be explicitly supported (or rejected) — here supported.
+        Assert.True(Importer.IsSupported("lesson.docm"));
+        Assert.True(Importer.IsSupported("lesson.pptm"));
+
+        var file = BuildZip("macro.docm", ("word/media/img.png", PngBytes()));
+        Assert.NotNull(OfficePreviewExtractor.Extract(
+            file, new OfficePreviewExtractor.ZipLimits()));
+    }
+
+    /// <summary>AGENTS §25: explicit import-latency budget, no "performance
+    /// tested" without numbers. The fixtures are tiny, so this guards against
+    /// accidental superlinear work in the import paths, not absolute speed.</summary>
+    [Fact]
+    public void ImportLatency_MixedBatch_StaysWithinBudget()
+    {
+        var doc = new BoardDocument { PageCount = 1 };
+        doc.EnsurePages();
+        var files = Enumerable.Range(0, 4)
+            .Select(i =>
+            {
+                var file = Path.Combine(_dir, $"slide-{i}.png");
+                File.WriteAllBytes(file, PngBytes());
+                return file;
+            })
+            .ToArray();
+        var pptx = BuildZip("deck.pptx", ("ppt/media/slide1.png", PngBytes()));
+        var pdf = Path.Combine(_dir, "text-only.pdf");
+        File.WriteAllText(pdf,
+            "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n" +
+            "2 0 obj\n<< /Type /Page /Count 1 >>\nstream\nBT /F1 12 Tf (Hello) Tj ET\nendstream\nendobj\n%%EOF\n");
+
+        var sw = Stopwatch.StartNew();
+        var images = Importer.Import(doc, null!, files);
+        var preview = OfficePreviewExtractor.Extract(
+            pptx, new OfficePreviewExtractor.ZipLimits());
+        var parsed = Importer.Import(doc, null!, [pdf]);
+        sw.Stop();
+
+        Assert.True(images.Succeeded, string.Join("; ", images.Warnings));
+        Assert.Equal(4, images.PagesAdded);
+        Assert.NotNull(preview);
+        Assert.Contains(parsed.Warnings, w => w.Contains("vector"));
+
+        const long BudgetMs = 5000;
+        Assert.True(sw.ElapsedMilliseconds < BudgetMs,
+            $"mixed import batch took {sw.ElapsedMilliseconds} ms (budget {BudgetMs} ms)");
     }
 
     private string BuildZip(string name, params (string Entry, byte[] Content)[] entries)

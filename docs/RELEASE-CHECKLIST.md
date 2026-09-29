@@ -21,7 +21,7 @@ Block the release while any box is unchecked.
 - [x] warnings = errors (csproj + green build)
 - [x] deterministic build (`Deterministic=true`)
 - [x] Release build re-run after final doc edits this pass: build 0 warnings
-      /0 errors, 566 tests (565 + 1 conditional skip), format clean,
+      /0 errors, 575 tests (574 + 1 conditional skip), format clean,
       audit clean. Docs-only commits followed; re-run once more before any tag
 - [x] x64 verified — CI publish green on every push through `d7c3bee`, plus
       local publish and repeated app execution (installer E2E ran the binary)

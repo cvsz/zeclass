@@ -13,6 +13,12 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
 - GitHub issue and pull request templates
 - CI, CodeQL, dependency review, and Dependabot automation
 - Release workflow and project documentation structure
+- Office import tests: the full AGENTS §12 fixture matrix — EMF and WMF media
+  identified by content, PNG/JPEG payloads never saved under a laundering
+  extension, no-preview and malformed-ZIP packages, DOCX `word/media`, and
+  explicit DOCM/PPTM support; plus the AGENTS §25 import-latency budget
+  (mixed images + Office preview + PDF parse batch < 5 s). `ImporterTests`
+  33 → 42; total 566 → 575 tests
 
 ### Changed
 

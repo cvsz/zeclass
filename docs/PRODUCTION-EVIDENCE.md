@@ -7,8 +7,9 @@
   `fd392a0` initial import → `db344d3` digitizer classification →
   `02c691a` board-file version gate/string caps/crash-safe save/recorder
   failure tests → `c86f9ed` installer precheck fix + installer E2E evidence →
-  `d7c3bee` accessibility name contract → `52e9ef7` uninstaller + E2E.
-  All pushed; `HEAD == origin/main`.
+  `d7c3bee` accessibility name contract → `52e9ef7` uninstaller + E2E →
+  `86a6924`/`91e76be`/`3276f04` docs evidence passes → `baac507` release
+  dry-run trigger. All pushed; `HEAD == origin/main`.
   Commit signing disabled locally (`commit.gpgsign=false`): the configured
   `gpg.program` from an old Git install no longer exists on this machine.
   Artifact signing (the release gate that matters) is unaffected and still
@@ -16,18 +17,21 @@
 - Baseline before changes: `dotnet build -c Release` FAILED (9 errors:
   SYSLIB1062 missing `AllowUnsafeBlocks`, SYSLIB1051 un-marshalled bool,
   CS0227). README claims of a green build did not reproduce here.
-- After changes: build 0 warnings/0 errors; **566 tests total (565 passed + 1
-  conditional skip)**; fast suite `Category!=Soak` = 559 passed + 1 skip;
+- After changes: build 0 warnings/0 errors; **575 tests total (574 passed + 1
+  conditional skip)**; fast suite `Category!=Soak` = 568 passed + 1 skip;
   soak 6/6; format clean; vulnerability audit clean; both `install.ps1` and
   `uninstall.ps1` parse and run under Windows PowerShell 5.1.
 - CI evidence (GitHub Actions, API-verified): `CI` workflow run **success** on
-  `db344d3`, `02c691a`, `c86f9ed`, `d7c3bee`, `52e9ef7`, `86a6924` (restore,
-  format, build, unit+integration, soak, dependency audit, workflow hygiene,
-  PSScriptAnalyzer, per-RID publish, checksums, SBOM, repository-baseline).
-  `CodeQL` workflow **success** through `52e9ef7`. `release.yml` (tag path) has
-  never run and no tags exist. GitHub Security pages were not browsed from
-  here — dependency-review runs only on PRs and no PR exists (`gh auth login`
-  device flow expired; repo has 0 issues / 0 PRs / 0 tags).
+  `fd392a0`, `db344d3`, `02c691a`, `c86f9ed`, `d7c3bee`, `52e9ef7`, `86a6924`,
+  `3276f04`, `baac507` (restore, format, build, unit+integration, soak,
+  dependency audit, workflow hygiene, PSScriptAnalyzer, per-RID publish,
+  checksums, SBOM, repository-baseline); `91e76be`'s CI run was *cancelled* by
+  `cancel-in-progress` when the next push superseded it (its CodeQL run
+  succeeded — not a failure). `CodeQL` workflow **success** on every push
+  through `baac507`. Neither `release.yml` path (tag push or
+  `workflow_dispatch`) has run and no tags exist. GitHub Security pages were
+  not browsed from here — dependency-review runs only on PRs and no PR exists
+  (`gh auth login` device flow expired; repo has 0 issues / 0 PRs / 0 tags).
 - Live-hardware API evidence (this machine): SetupAPI probe 12/12 HID vs
   independent recount; description-based classifier reports the three
   "HID-compliant touch screen" interfaces as `TouchScreen` (VID 0483/1FD2 now
@@ -85,6 +89,13 @@
 15. `build\uninstall.ps1`: scoped per-user removal (install-dir-only process
     stop, shortcut removal, user data kept unless `-PurgeUserData`, optional
     `-Backup`); E2E matrix run and recorded.
+16. Release dry-run: `release.yml` `workflow_dispatch` trigger (manual run =
+    never publishes; tag gates fall back to csproj SemVer) + local
+    Authenticode round-trip with a throwaway certificate (sign → DigiCert
+    timestamp → verifier refuses untrusted root; cert removed from all stores).
+17. §12 fixture-matrix completion (EMF, WMF, no-preview, malformed ZIP, DOCX
+    media, PNG/JPEG content-beats-name, DOCM/PPTM) + §25 import-latency budget
+    (mixed image/Office/PDF batch <5 s).
 
 ## Deferred with rationale
 
