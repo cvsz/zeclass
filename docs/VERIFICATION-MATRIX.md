@@ -14,6 +14,7 @@ are pending on the classroom machine.
 | Build-compiles interop (LibraryImport) | TEST | PASS | fixed `AllowUnsafeBlocks` + bool marshalling; build green |
 | SetupAPI enumeration correct | TEST (live API) | PASS | 12/12 HID vs raw SetupAPI recount, paths well-formed, VID/PID non-zero |
 | Digitizer classification (description → path → vendor) | TEST + TEST (live API) | PASS | 19 `InferKind` cases; live probe classifies 3 touch interfaces as `TouchScreen` on this machine |
+| DPI: PerMonitorV2, no silent 96-DPI assumption | TEST + CODE-REVIEW | PASS (static) | manifest declares `PerMonitorV2` (+`true/pm` fallback) and `EnablePerMonitorV2()` re-applies it at runtime (InkSurface:226); awareness query tested (`PointerNativeTests`); all 5 coordinate-conversion sites use `TransformFromDevice`/`GetDpi().PixelsPerDip` — grep for hard-coded 96 finds none. Mixed-DPI/monitor-move/calibration-scaling: NOT DONE (needs panel hardware pass) |
 | Board format version gate | TEST | PASS | future/non-positive version rejected before use; legacy files without the field load as v1 |
 | Board string caps (name/language/shape/paths) | TEST | PASS | truncation + unusable-path drop cases; legitimate Unicode paths untouched |
 | Crash-safe save (tmp→flush→rename, .bak, read-back) | TEST | PASS | backup retention, short-write restore path, locked target, missing parent, Unicode + >260-char paths |

@@ -20,11 +20,15 @@ Block the release while any box is unchecked.
 - [x] SDK pinned (`global.json` 8.0.425)
 - [x] warnings = errors (csproj + green build)
 - [x] deterministic build (`Deterministic=true`)
-- [ ] Release build reproducible — NOT RE-RUN here after final doc edits
-      (docs-only; re-run `dotnet build` + full suite before tagging)
-- [ ] x64 verified — via CI publish
-- [ ] ARM64 verified — via CI publish
-- [ ] x86 verified or removed — via CI publish
+- [x] Release build re-run after final doc edits this pass: build 0 warnings
+      /0 errors, 566 tests (565 + 1 conditional skip), format clean,
+      audit clean. Docs-only commits followed; re-run once more before any tag
+- [x] x64 verified — CI publish green on every push through `d7c3bee`, plus
+      local publish and repeated app execution (installer E2E ran the binary)
+- [ ] ARM64 verified — CI publish green (build/package only); not executed on
+      ARM64 hardware
+- [ ] x86 verified or removed — CI publish green (build/package only); not
+      executed on x86 as a 32-bit process (x64 runs under WoW64 only)
 
 ## Tests
 
