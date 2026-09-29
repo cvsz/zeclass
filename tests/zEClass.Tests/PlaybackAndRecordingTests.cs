@@ -478,4 +478,102 @@ public sealed class ScreenRecorderTests : IDisposable
         Assert.Equal(16, recorder.Height);
         recorder.Stop();
     }
+
+    // ---- §10 failure paths: low disk, interrupted stop, abandonment, bad target ----
+
+    [Fact]
+    public void LowDiskMidRecording_TripsGracefullyAndFinalizesCapturedFrames()
+    {
+        // Disk exhaustion mid-recording must not lose the lesson: the frames already
+        // written stay valid on disk, the limit is reported, and later frames are refused
+        // rather than retried forever.
+        var path = Path.Combine(_dir, "lowdisk.avi");
+        var recorder = new ScreenRecorder
+        {
+            Limits = new ScreenRecorder.RecordingLimits { MaxFrameRate = 0 },
+        };
+        Assert.True(recorder.Start(path, 64, 48));
+        var solid = new byte[64 * 3 * 48];
+        Assert.True(recorder.AddFrame(solid));
+        Assert.True(recorder.AddFrame(solid));
+
+        recorder.Limits = new ScreenRecorder.RecordingLimits
+        {
+            MaxFrameRate = 0,
+            // No real drive reports this much free space. Half-max avoids the
+            // required = MinimumFreeDiskSpace + frameBytes overflow.
+            MinimumFreeDiskSpace = long.MaxValue / 2,
+        };
+
+        Assert.False(recorder.AddFrame(solid));
+        Assert.True(recorder.LimitReached);
+        Assert.Contains("disk", recorder.LastError, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, recorder.FrameCount);
+
+        var written = recorder.Stop();
+        Assert.NotNull(written);
+        Assert.Equal("RIFF", File.ReadAllText(written)[..4]);
+        Assert.False(File.Exists(path + ".tmp"));
+    }
+
+    [Fact]
+    public void InterruptedFinalSwap_KeepsTargetAndLeavesNoTempDebris()
+    {
+        // The rename onto the final path fails (target held by another process): the
+        // recorder must report the failure, keep the existing target untouched, and not
+        // leave a half-finalized temp behind.
+        var path = Path.Combine(_dir, "swapped.avi");
+        var recorder = new ScreenRecorder
+        {
+            Limits = new ScreenRecorder.RecordingLimits { MaxFrameRate = 0 },
+        };
+        Assert.True(recorder.Start(path, 32, 32));
+        Assert.True(recorder.AddFrame(new byte[32 * 3 * 32]));
+
+        File.WriteAllBytes(path, []); // pre-existing target the swap must replace
+        using var held = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
+        Assert.Null(recorder.Stop());
+
+        Assert.False(string.IsNullOrWhiteSpace(recorder.LastError));
+        Assert.False(File.Exists(path + ".tmp"));
+        Assert.Equal(0, held.Length); // the held target was never replaced
+    }
+
+    [Fact]
+    public void DisposeWithoutStop_StillFinalizesInsteadOfLeavingTemp()
+    {
+        // An abandoned recorder (window closed, crash path) must not leave an orphan
+        // .avi.tmp that later reads as a corrupt recording.
+        var path = Path.Combine(_dir, "abandoned.avi");
+        var recorder = new ScreenRecorder
+        {
+            Limits = new ScreenRecorder.RecordingLimits { MaxFrameRate = 0 },
+        };
+        Assert.True(recorder.Start(path, 32, 32));
+        Assert.True(recorder.AddFrame(new byte[32 * 3 * 32]));
+
+        recorder.Dispose();
+
+        Assert.True(File.Exists(path));
+        Assert.False(File.Exists(path + ".tmp"));
+        Assert.Equal("RIFF", File.ReadAllText(path)[..4]);
+    }
+
+    [Fact]
+    public void StartWithUnusableTarget_FailsCleanlyWithoutDebris()
+    {
+        // Start creates missing parents, so the hostile case is a parent that cannot be a
+        // directory: a plain file occupies the name. The failure must be reported, not
+        // thrown, and no temp may survive it.
+        var blocker = Path.Combine(_dir, "blocked");
+        File.WriteAllText(blocker, "not a directory");
+        var recorder = new ScreenRecorder();
+
+        var started = recorder.Start(Path.Combine(blocker, "x.avi"), 32, 32);
+
+        Assert.False(started);
+        Assert.False(string.IsNullOrWhiteSpace(recorder.LastError));
+        Assert.Null(recorder.Stop());
+        Assert.Empty(Directory.GetFiles(_dir, "*.tmp"));
+    }
 }

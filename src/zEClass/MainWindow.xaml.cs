@@ -1691,6 +1691,10 @@ public partial class MainWindow : Window
             return;
         }
 
+        // A save that died between write and rename leaves a promotable temp beside (or
+        // instead of) the target; reconcile before the load so a recovered board opens.
+        BoardSerializer.RecoverStaleTempFiles(Path.GetDirectoryName(dialog.FileName));
+
         if (BoardSerializer.TryLoad(dialog.FileName, out var doc, out var error))
         {
             _document = doc!;
@@ -1806,6 +1810,12 @@ public partial class MainWindow : Window
     {
         try
         {
+            // First: reconcile autosaves interrupted mid-save by a previous run, before
+            // the candidate list is read. Promotable temps become the autosave; debris
+            // beside a healthy autosave is deleted. Runs ahead of the first autosave
+            // tick, so no concurrent write can be in flight in this directory.
+            BoardSerializer.RecoverStaleTempFiles(Path.GetDirectoryName(AutosavePath()));
+
             DateTime? savedWrite = savedPath is not null && File.Exists(savedPath)
                 ? File.GetLastWriteTimeUtc(savedPath)
                 : null;

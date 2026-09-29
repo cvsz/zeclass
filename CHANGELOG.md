@@ -30,5 +30,10 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
 - Installer: hash/PE verification of staged artifact, rollback to backup on install/verify failure, only stops instances running from the install directory
 - Release workflow: SemVer tag check, tag-vs-csproj version gate, per-artifact `release-manifest.json` (hashes, signature status, SBOM binding)
 - Digitizer detection: classification now uses a three-stage fallback — HID caps (`HidP_GetCaps`, usage page 0x0D) when the device can be opened, then the Windows device description (`SPDRP_DEVICEDESC`, e.g. "HID-compliant touch screen"), then path keywords and the known-panel vendor list; "pen"+"touch" descriptions classify as `TouchAndPen`; previously undetectable touch controllers (VID 0483/1FD2) now report `TouchScreen` with pressure
+- Board files: explicit `Version` field stamped on save; load rejects a file claiming an unsupported format version before using its content; files without the field keep loading as version 1
+- Board files: previously unbounded strings capped — board name, language tag, shape name, background/image paths (Win32 long-path ceiling) are truncated or dropped in `Sanitize`
+- Persistence: previous board retained as `.bak` before every replace; read-back length verification restores the backup if the write came up short; `RecoverStaleTempFiles` reconciles interrupted saves at startup (autosave directory) and on open (promotes a valid orphan temp, moves a corrupt one aside as `.corrupt`, deletes debris beside a healthy board)
+- Screen recorder: failure-path tests — low-disk trip mid-recording finalizes captured frames, interrupted final swap keeps the target and leaves no temp, dispose-without-stop finalizes, unusable target fails cleanly
+- Performance budgets: explicit thresholds for 10k-stroke save/load, max-cap hostile board load, and page-switch lookup on a 200-page term board
 
 ### Security

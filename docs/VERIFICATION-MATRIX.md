@@ -7,13 +7,19 @@ are pending on the classroom machine.
 | Claim | Method | Result | Evidence / limitation |
 |---|---|---|---|
 | Release build, 0 warnings/errors | TEST | PASS | `dotnet build zEClass.sln -c Release`, 0/0 |
-| Unit+integration 533 pass, 1 conditional skip | TEST | PASS | `dotnet test --filter Category!=Soak`; skip = vendor-manual PDF (`ZECLASS_VENDOR_MANUAL`) |
+| Unit+integration 556 pass, 1 conditional skip | TEST | PASS | `dotnet test --filter Category!=Soak`; skip = vendor-manual PDF (`ZECLASS_VENDOR_MANUAL`) |
 | Soak 6/6 | TEST | PASS | history bounds, round-trip stability, erase ordering |
 | Format clean | TEST | PASS | `dotnet format --verify-no-changes` |
 | No vulnerable packages | DEPENDENCY-SCAN | PASS | `dotnet list package --vulnerable --include-transitive`: none |
 | Build-compiles interop (LibraryImport) | TEST | PASS | fixed `AllowUnsafeBlocks` + bool marshalling; build green |
 | SetupAPI enumeration correct | TEST (live API) | PASS | 12/12 HID vs raw SetupAPI recount, paths well-formed, VID/PID non-zero |
 | Digitizer classification (description → path → vendor) | TEST + TEST (live API) | PASS | 19 `InferKind` cases; live probe classifies 3 touch interfaces as `TouchScreen` on this machine |
+| Board format version gate | TEST | PASS | future/non-positive version rejected before use; legacy files without the field load as v1 |
+| Board string caps (name/language/shape/paths) | TEST | PASS | truncation + unusable-path drop cases; legitimate Unicode paths untouched |
+| Crash-safe save (tmp→flush→rename, .bak, read-back) | TEST | PASS | backup retention, short-write restore path, locked target, missing parent, Unicode + >260-char paths |
+| Stale temp recovery | TEST | PASS | promote valid orphan, `.corrupt` aside, delete debris beside primary, no-op on missing dir |
+| Recorder failure paths | TEST | PASS | low-disk trip finalizes prefix, interrupted swap leaves no debris, dispose finalizes, bad target clean fail |
+| Performance budgets (explicit ms) | TEST | PASS | 10k-stroke save/load <10 s, hostile max-cap load <5 s, 1000 page lookups <2 s |
 | Touch/pen/pressure/tilt/palm/gestures/calibration | HARDWARE | NOT DONE | no panel on this machine; use in-app Acceptance test on panel PC |
 | Office ZIP bombs/traversal/mislabel | TEST | PASS | 33/33 `ImporterTests` incl. bomb, traversal, ratio, caps |
 | Board aggregate caps | TEST | PASS | `BoardSerializerTests` trim/budget/clamp cases |

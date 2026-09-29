@@ -191,6 +191,226 @@ public sealed class BoardSerializerTests : IDisposable
     }
 
     [Fact]
+    public void Load_FutureFormatVersion_IsRejectedBeforeUse()
+    {
+        var path = Path.Combine(_dir, "future.ebboard");
+        File.WriteAllText(path, "{\"Version\":99,\"PageCount\":1,\"Pages\":[]}");
+
+        var ok = BoardSerializer.TryLoad(path, out var doc, out var error);
+
+        Assert.False(ok);
+        Assert.Null(doc);
+        Assert.Contains("version", error, StringComparison.OrdinalIgnoreCase);
+        Assert.Throws<InvalidDataException>(() => BoardSerializer.Load(path));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Load_NonPositiveFormatVersion_IsRejected(int version)
+    {
+        var path = Path.Combine(_dir, $"badver{version}.ebboard");
+        File.WriteAllText(path, $"{{\"Version\":{version},\"PageCount\":1,\"Pages\":[]}}");
+
+        var ok = BoardSerializer.TryLoad(path, out _, out var error);
+
+        Assert.False(ok);
+        Assert.Contains("version", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Load_FileWithoutVersionField_ReadsAsCurrentVersion()
+    {
+        // Files saved before versioning existed have no Version property; they must keep
+        // loading as version 1 rather than being rejected as version 0.
+        var path = Path.Combine(_dir, "legacy.ebboard");
+        File.WriteAllText(path, "{\"PageCount\":2,\"Pages\":[]}");
+
+        var doc = BoardSerializer.Load(path);
+
+        Assert.Equal(BoardDocument.FileFormatVersion, doc.Version);
+        Assert.Equal(2, doc.Pages.Count);
+    }
+
+    [Fact]
+    public void Save_StampsAndRoundTripsCurrentFormatVersion()
+    {
+        var path = Path.Combine(_dir, "versioned.ebboard");
+        BoardSerializer.Save(new BoardDocument { PageCount = 1 }, path);
+
+        Assert.Contains("\"Version\":1", File.ReadAllText(path), StringComparison.Ordinal);
+        Assert.Equal(BoardDocument.FileFormatVersion, BoardSerializer.Load(path).Version);
+    }
+
+    [Fact]
+    public void Load_TruncatesOversizedTopLevelStringsAndDropsUnusablePaths()
+    {
+        var path = Path.Combine(_dir, "bigstrings.ebboard");
+        var hugeName = new string('N', BoardDocument.MaxNameChars + 100);
+        var hugeLang = new string('L', BoardDocument.MaxLanguageChars + 10);
+        var hugeShape = new string('S', BoardDocument.MaxShapeNameChars + 10);
+        var hugePath = new string('P', BoardDocument.MaxPathChars + 10);
+        File.WriteAllText(path,
+            "{\"PageCount\":1,\"Name\":\"" + hugeName + "\",\"Language\":\"" + hugeLang +
+            "\",\"Images\":[{\"SourcePath\":\"" + hugePath + "\"}]," +
+            "\"Pages\":[{\"Index\":0,\"BackgroundImage\":\"" + hugePath +
+            "\",\"Strokes\":[{\"Shape\":\"" + hugeShape + "\"}]}]}");
+
+        var doc = BoardSerializer.Load(path);
+
+        Assert.Equal(BoardDocument.MaxNameChars, doc.Name.Length);
+        Assert.Equal("en", doc.Language);
+        Assert.Equal(string.Empty, Assert.Single(doc.Images).SourcePath);
+        var page = Assert.Single(doc.Pages);
+        Assert.Null(page.BackgroundImage);
+        Assert.Equal(BoardDocument.MaxShapeNameChars, page.Strokes[0].Shape.Length);
+    }
+
+    [Fact]
+    public void Sanitize_KeepsLegitimatePathsAndNamesUntouched()
+    {
+        var doc = new BoardDocument
+        {
+            Name = "Class 4A — หน่วยที่ 3",
+            Language = "zh-Hans",
+            PageCount = 1,
+        };
+        doc.Pages.Add(new BoardPage
+        {
+            Index = 0,
+            BackgroundImage = @"C:\lessons\day 1\พื้นหลัง.png",
+        });
+
+        doc.Sanitize();
+
+        Assert.Equal("Class 4A — หน่วยที่ 3", doc.Name);
+        Assert.Equal("zh-Hans", doc.Language);
+        Assert.Equal(@"C:\lessons\day 1\พื้นหลัง.png", doc.Pages[0].BackgroundImage);
+    }
+
+    // ---- §6 crash-safe persistence ------------------------------------------------
+
+    [Fact]
+    public void Save_KeepsPreviousBoardAsBackup()
+    {
+        var path = Path.Combine(_dir, "backup.ebboard");
+        BoardSerializer.Save(new BoardDocument { Name = "first" }, path);
+        BoardSerializer.Save(new BoardDocument { Name = "second" }, path);
+
+        Assert.Equal("second", BoardSerializer.Load(path).Name);
+        Assert.True(File.Exists(path + ".bak"));
+        Assert.Equal("first", BoardSerializer.Load(path + ".bak").Name);
+    }
+
+    [Fact]
+    public void Save_TargetHeldByAnotherProcess_FailsWithoutTouchingTheOldBoard()
+    {
+        var path = Path.Combine(_dir, "locked.ebboard");
+        BoardSerializer.Save(new BoardDocument { Name = "original" }, path);
+
+        using (var held = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.ThrowsAny<IOException>(() =>
+                BoardSerializer.Save(new BoardDocument { Name = "replacement" }, path));
+        }
+
+        Assert.Equal("original", BoardSerializer.Load(path).Name);
+        Assert.False(File.Exists(path + ".tmp"));
+    }
+
+    [Fact]
+    public void Save_MissingParentDirectory_FailsCleanly()
+    {
+        var path = Path.Combine(_dir, "no-such-dir", "board.ebboard");
+
+        Assert.Throws<DirectoryNotFoundException>(() =>
+            BoardSerializer.Save(new BoardDocument(), path));
+
+        Assert.False(File.Exists(path));
+        Assert.False(File.Exists(path + ".tmp"));
+    }
+
+    [Fact]
+    public void SaveAndLoad_UnicodePathRoundTrips()
+    {
+        var dir = Path.Combine(_dir, "บทที่ 1 — วิทยาศาสตร์");
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "กระดาน ทดสอบ.ebboard");
+        BoardSerializer.Save(new BoardDocument { Name = "หน่วยที่ 3" }, path);
+
+        Assert.Equal("หน่วยที่ 3", BoardSerializer.Load(path).Name);
+    }
+
+    [Fact]
+    public void SaveAndLoad_PathBeyondLegacy260LimitRoundTrips()
+    {
+        // .NET Core addresses long paths directly; a classroom board lives under deep
+        // network shares, so the save path must not assume MAX_PATH.
+        var dir = _dir;
+        for (var i = 0; i < 16; i++)
+        {
+            dir = Path.Combine(dir, "deep-segment-" + i.ToString("D2") + "-padding");
+        }
+
+        Directory.CreateDirectory(dir);
+        Assert.True(Path.Combine(dir, "deep.ebboard").Length > 260);
+        var path = Path.Combine(dir, "deep.ebboard");
+        BoardSerializer.Save(new BoardDocument { Name = "deep" }, path);
+
+        Assert.Equal("deep", BoardSerializer.Load(path).Name);
+    }
+
+    [Fact]
+    public void RecoverStaleTempFiles_PromotesValidTempWhenPrimaryIsMissing()
+    {
+        // Crash happened between the durable write and the rename: the temp is the
+        // newest complete board and must become the primary.
+        var primary = Path.Combine(_dir, "crashed.ebboard");
+        BoardSerializer.Save(new BoardDocument { Name = "unwritten" }, primary + ".staging");
+        File.Move(primary + ".staging", primary + ".tmp");
+        File.Delete(primary);
+
+        BoardSerializer.RecoverStaleTempFiles(_dir);
+
+        Assert.True(File.Exists(primary));
+        Assert.False(File.Exists(primary + ".tmp"));
+        Assert.Equal("unwritten", BoardSerializer.Load(primary).Name);
+    }
+
+    [Fact]
+    public void RecoverStaleTempFiles_MovesCorruptTempAsideWithoutDeletingIt()
+    {
+        var primary = Path.Combine(_dir, "corrupttmp.ebboard");
+        File.WriteAllText(primary + ".tmp", "{ not json");
+
+        BoardSerializer.RecoverStaleTempFiles(_dir);
+
+        Assert.False(File.Exists(primary));
+        Assert.False(File.Exists(primary + ".tmp"));
+        Assert.True(File.Exists(primary + ".tmp.corrupt"));
+    }
+
+    [Fact]
+    public void RecoverStaleTempFiles_DeletesTempBesideHealthyPrimary()
+    {
+        var primary = Path.Combine(_dir, "healthy.ebboard");
+        BoardSerializer.Save(new BoardDocument { Name = "keep" }, primary);
+        File.WriteAllText(primary + ".tmp", "{\"PageCount\":1}");
+
+        BoardSerializer.RecoverStaleTempFiles(_dir);
+
+        Assert.Equal("keep", BoardSerializer.Load(primary).Name);
+        Assert.False(File.Exists(primary + ".tmp"));
+    }
+
+    [Fact]
+    public void RecoverStaleTempFiles_MissingOrEmptyDirectoryIsANoOp()
+    {
+        BoardSerializer.RecoverStaleTempFiles(Path.Combine(_dir, "not-created"));
+        BoardSerializer.RecoverStaleTempFiles(string.Empty);
+    }
+
+    [Fact]
     public void Load_NullPagesList_IsRepairedToAWorkingDocument()
     {
         var path = Path.Combine(_dir, "nullpages.ebboard");

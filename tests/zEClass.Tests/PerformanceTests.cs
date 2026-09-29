@@ -178,4 +178,114 @@ public sealed class PerformanceTests
 
         Assert.InRange(consumed, 0, 2);
     }
+
+    /// <summary>AGENTS §25: explicit budgets, no "performance tested" without numbers.</summary>
+    [Fact]
+    public void SaveAndLoad_TenThousandStrokes_WithinBudget()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "zEClass-perf-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var doc = new BoardDocument { PageCount = 10, Name = "10k stress" };
+            doc.EnsurePages();
+            for (var p = 0; p < doc.Pages.Count; p++)
+            {
+                for (var s = 0; s < 1000; s++)
+                {
+                    var stroke = new InkStroke { Width = 4 };
+                    for (var i = 0; i < 10; i++)
+                    {
+                        stroke.Points.Add(new InkPoint
+                        {
+                            X = i * 2.5,
+                            Y = s % 500,
+                            Pressure = 0.5,
+                        });
+                    }
+
+                    doc.Pages[p].Strokes.Add(stroke);
+                }
+            }
+
+            var path = Path.Combine(dir, "ten-k.ebboard");
+            var sw = Stopwatch.StartNew();
+            BoardSerializer.Save(doc, path);
+            sw.Stop();
+            var saveMs = sw.ElapsedMilliseconds;
+
+            sw.Restart();
+            var loaded = BoardSerializer.Load(path);
+            sw.Stop();
+            var loadMs = sw.ElapsedMilliseconds;
+
+            Assert.Equal(10_000, loaded.Pages.Sum(x => x.Strokes.Count));
+            Assert.True(saveMs < 10_000, $"saving 10k strokes took {saveMs} ms");
+            Assert.True(loadMs < 10_000, $"loading 10k strokes took {loadMs} ms");
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(dir, true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    [Fact]
+    public void Load_MaxedOutHostileBoard_CompletesWithinBudget()
+    {
+        // A 200-byte file claiming the page cap must not turn into a CPU denial of
+        // service: sanitizing and materializing the capped board has a hard budget.
+        var dir = Path.Combine(Path.GetTempPath(), "zEClass-perf-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var path = Path.Combine(dir, "hostile.ebboard");
+            File.WriteAllText(path,
+                $"{{\"PageCount\":{BoardDocument.MaxPageCount},\"Pages\":[]}}");
+
+            var sw = Stopwatch.StartNew();
+            var doc = BoardSerializer.Load(path);
+            sw.Stop();
+
+            Assert.Equal(BoardDocument.MaxPageCount, doc.Pages.Count);
+            Assert.True(sw.ElapsedMilliseconds < 5000,
+                $"max-cap load took {sw.ElapsedMilliseconds} ms");
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(dir, true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    [Fact]
+    public void PageSwitchLookup_StaysFastOnTermSizedBoard()
+    {
+        // Active() runs the repair pass every call; a 200-page term board must keep page
+        // flipping imperceptible even if the UI polls the active page per frame.
+        var doc = new BoardDocument { PageCount = 200 };
+        doc.EnsurePages();
+
+        var sw = Stopwatch.StartNew();
+        for (var i = 0; i < 1000; i++)
+        {
+            doc.ActivePage = i % 200;
+            _ = doc.Active();
+        }
+
+        sw.Stop();
+
+        Assert.True(sw.ElapsedMilliseconds < 2000,
+            $"1000 page lookups took {sw.ElapsedMilliseconds} ms");
+    }
 }

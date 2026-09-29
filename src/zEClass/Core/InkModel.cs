@@ -213,6 +213,19 @@ public sealed class BoardDocument
 
     public const int MaxPageNameChars = 1_000;
 
+    /// <summary>Cap on the board name a file may carry.</summary>
+    public const int MaxNameChars = 1_000;
+
+    /// <summary>Cap on the language tag; anything longer is not a BCP-47 tag.</summary>
+    public const int MaxLanguageChars = 32;
+
+    /// <summary>Cap on the shape name one stroke may carry.</summary>
+    public const int MaxShapeNameChars = 64;
+
+    /// <summary>Cap on stored file paths (background/image sources). Matches the
+    /// Win32 long-path ceiling so legitimate UNC/long paths survive.</summary>
+    public const int MaxPathChars = 32_768;
+
     /// <summary>Upper bound on canvas dimensions in board units. Rendering a board tens of
     /// millions of units wide would collapse the viewport math; legit boards stay near
     /// display sizes.</summary>
@@ -242,10 +255,26 @@ public sealed class BoardDocument
 
         public int MaxPageNameChars { get; init; } = BoardDocument.MaxPageNameChars;
 
+        public int MaxNameChars { get; init; } = BoardDocument.MaxNameChars;
+
+        public int MaxLanguageChars { get; init; } = BoardDocument.MaxLanguageChars;
+
+        public int MaxShapeNameChars { get; init; } = BoardDocument.MaxShapeNameChars;
+
+        public int MaxPathChars { get; init; } = BoardDocument.MaxPathChars;
+
         public double MaxCanvasDimension { get; init; } = BoardDocument.MaxCanvasDimension;
     }
 
     public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    /// On-disk format version. Files without the field predate versioning and read as
+    /// <see cref="FileFormatVersion"/>; <see cref="BoardSerializer.Load"/> refuses a file
+    /// claiming a newer or non-positive version instead of misparsing it.
+    /// </summary>
+    public int Version { get; set; } = FileFormatVersion;
+
     public string Name { get; set; } = "Untitled board";
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset ModifiedUtc { get; set; } = DateTimeOffset.UtcNow;
@@ -315,8 +344,12 @@ public sealed class BoardDocument
         {
             Name = "Untitled board";
         }
+        else if (Name.Length > limits.MaxNameChars)
+        {
+            Name = Name[..limits.MaxNameChars];
+        }
 
-        if (string.IsNullOrEmpty(Language))
+        if (string.IsNullOrEmpty(Language) || Language.Length > limits.MaxLanguageChars)
         {
             Language = "en";
         }
@@ -383,7 +416,7 @@ public sealed class BoardDocument
 
         foreach (var image in Images)
         {
-            SanitizeImage(image);
+            SanitizeImage(image, limits);
         }
 
         var totalStrokes = 0;
@@ -395,6 +428,11 @@ public sealed class BoardDocument
             if (page.Name.Length > limits.MaxPageNameChars)
             {
                 page.Name = page.Name[..limits.MaxPageNameChars];
+            }
+
+            if (page.BackgroundImage is { Length: > 0 } bg && bg.Length > limits.MaxPathChars)
+            {
+                page.BackgroundImage = null;
             }
 
             page.Strokes ??= new();
@@ -431,7 +469,7 @@ public sealed class BoardDocument
 
             foreach (var image in page.Images)
             {
-                SanitizeImage(image);
+                SanitizeImage(image, limits);
             }
 
             foreach (var stroke in page.Strokes)
@@ -469,9 +507,16 @@ public sealed class BoardDocument
         Pages = Pages.Select(p => p.Clone()).ToList(),
     };
 
-    private static void SanitizeImage(InkImage image)
+    private static void SanitizeImage(InkImage image, BoardLimits limits)
     {
         image.SourcePath ??= string.Empty;
+        if (image.SourcePath.Length > limits.MaxPathChars)
+        {
+            // A path this long cannot name a real file; keep the record (position and
+            // size are still meaningful) but drop the unloadable path.
+            image.SourcePath = string.Empty;
+        }
+
         if (!double.IsFinite(image.X))
         {
             image.X = 0;
@@ -522,6 +567,7 @@ public sealed class BoardDocument
         }
 
         stroke.Shape ??= "line";
+        stroke.Shape = Truncate(stroke.Shape, limits.MaxShapeNameChars) ?? "line";
         stroke.Geometry = Truncate(stroke.Geometry, limits.MaxShapeTextChars);
         stroke.Text = Truncate(stroke.Text, limits.MaxShapeTextChars);
         if (!double.IsFinite(stroke.Width) || stroke.Width <= 0)
@@ -650,10 +696,12 @@ public static class BoardSerializer
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
         doc.ModifiedUtc = DateTimeOffset.UtcNow;
+        doc.Version = BoardDocument.FileFormatVersion;
         doc.EnsurePages();
 
         var tmp = path + ".tmp";
         var json = JsonSerializer.Serialize(doc, Options);
+        var expectedBytes = Encoding.UTF8.GetByteCount(json);
         try
         {
             // Write beside the target, flush to the disk, then rename over it: a crash at
@@ -672,7 +720,32 @@ public static class BoardSerializer
                 stream.Flush(flushToDisk: true);
             }
 
+            // Retain the previous board as .bak before it is replaced. The copy happens
+            // first, so a crash here leaves the primary untouched; only the final rename
+            // swaps content, and the backup survives it.
+            if (File.Exists(path))
+            {
+                File.Copy(path, path + ".bak", overwrite: true);
+            }
+
             File.Move(tmp, path, overwrite: true);
+
+            // Read-back: a flush that returned success can still have persisted fewer
+            // bytes than expected. Verify the file that replaced the board, and restore
+            // the backup if it is short instead of leaving a truncated primary.
+            var written = new FileInfo(path).Length;
+            if (written != expectedBytes)
+            {
+                var bak = path + ".bak";
+                if (File.Exists(bak))
+                {
+                    File.Copy(bak, path, overwrite: true);
+                }
+
+                throw new IOException(
+                    $"Board file is {written} bytes after writing {expectedBytes}; " +
+                    "the previous version was restored from backup.");
+            }
         }
         catch
         {
@@ -706,6 +779,18 @@ public static class BoardSerializer
         var json = File.ReadAllText(path, Encoding.UTF8);
         var doc = JsonSerializer.Deserialize<BoardDocument>(json, Options)
                   ?? throw new InvalidDataException("Board file deserialized to null.");
+
+        // Format gate: a file claiming a version this build does not understand is
+        // rejected before any of its content is used, so a newer-format board can never
+        // be half-parsed into a plausible-looking but wrong lesson. Files without the
+        // field predate versioning and read as the current version via its default.
+        if (doc.Version < 1 || doc.Version > BoardDocument.FileFormatVersion)
+        {
+            throw new InvalidDataException(
+                $"Board file format version {doc.Version} is not supported " +
+                $"(this build reads 1..{BoardDocument.FileFormatVersion}).");
+        }
+
         return doc.Sanitize();
     }
 
@@ -728,6 +813,52 @@ public static class BoardSerializer
         {
             error = ex.Message;
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Reconciles <c>*.ebboard.tmp</c> files left behind by a process that died mid-save.
+    /// Called at startup for the autosave directory and when a board directory is opened;
+    /// never runs concurrently with a save in the same directory (both are driven from the
+    /// UI thread, and the autosave directory is recovered before the first autosave).
+    /// <list type="bullet">
+    /// <item>Temp with no primary: the crash happened between write and rename. If the
+    /// temp parses it is the newest complete write and is promoted; otherwise it is moved
+    /// aside as <c>.corrupt</c> — preserved as evidence, never retried.</item>
+    /// <item>Temp beside an existing primary: the primary is the authoritative complete
+    /// file and the temp is debris from an interrupted overwrite.</item>
+    /// </list>
+    /// </summary>
+    internal static void RecoverStaleTempFiles(string? directory)
+    {
+        if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+        {
+            return;
+        }
+
+        foreach (var tmp in Directory.EnumerateFiles(directory, "*.ebboard.tmp"))
+        {
+            try
+            {
+                var primary = tmp[..^".tmp".Length];
+                if (File.Exists(primary))
+                {
+                    File.Delete(tmp);
+                }
+                else if (TryLoad(tmp, out _, out _))
+                {
+                    File.Move(tmp, primary);
+                }
+                else
+                {
+                    File.Move(tmp, tmp + ".corrupt", overwrite: true);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Recovery is best-effort: one locked file must not stop the rest or
+                // prevent startup. The untouched temp is retried next launch.
+            }
         }
     }
 }

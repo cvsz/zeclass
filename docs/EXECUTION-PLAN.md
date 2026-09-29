@@ -1,20 +1,26 @@
 # Execution plan (remaining)
 
-Status: 7 slices implemented and locally verified (see
-`PRODUCTION-EVIDENCE.md`). No git here — committing, PRs, and CI runs are the
-next operator steps.
+Status: 12 slices implemented and locally verified (see
+`PRODUCTION-EVIDENCE.md`). Git history: `fd392a0` initial import,
+`db344d3` digitizer classification, plus the trust-boundary batch
+(board format version, string caps, crash-safe save backup/read-back/
+stale-temp recovery, recorder failure-path tests, performance budgets).
+All pushed to `origin/main`; CI runs there.
 
 ## Immediate (operator with git + GitHub)
 
-1. Review the working-tree diff (7 slices, all additive except `MainWindow`
-   save/autosave wiring and `install.ps1`).
-2. Commit per slice, one PR per slice (`fix:`/`feat:`/`security:`/`test:`),
-   with Problem/Root-cause/Implementation/Tests/Security/Performance/
-   Compatibility/Docs/Evidence/Limitations/Rollback in each body.
+1. Review the pushed diff (`git log -p fd392a0..origin/main`).
+2. PRs for remaining history if a review trail is required
+   (`fix:`/`feat:`/`security:`/`test:` with Problem/Root-cause/
+   Implementation/Tests/Security/Performance/Compatibility/Docs/
+   Evidence/Limitations/Rollback in each body). `gh auth login` was
+   blocked on the interactive device flow — complete it or open PRs in
+   the browser.
 3. Watch CI: build, format, tests, soak, audit, hygiene, PSScriptAnalyzer,
    per-RID publish, SBOM. Fix forward, never weaken gates.
 4. Tag `v1.0.0` to exercise the version gate + manifest + signing path
    (dry-run first with `RELEASE_SIGNING_REQUIRED` unset).
+5. Configure branch protection (required checks, no force push).
 
 ## Next verification (panel machine)
 
