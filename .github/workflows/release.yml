@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  # Dry-run path: run this workflow manually from the Actions tab to exercise
+  # build -> tests -> signing gate -> publish -> sign/verify -> SBOM -> checksums
+  # -> release manifest without creating or pushing a tag. A manual run never
+  # creates a GitHub release (that step runs on push events only), so it is safe
+  # to rehearse the whole release pipeline before any real tag exists.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,6 +33,24 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Resolve run mode
+        id: mode
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          # A manual run is always a dry run: no tag, no GitHub release.
+          if ($env:EVENT_NAME -eq 'workflow_dispatch') {
+            'is_dry_run=true' >> $env:GITHUB_OUTPUT
+            'asset_tag=dry-run' >> $env:GITHUB_OUTPUT
+            Write-Host 'Dry run: tag gates use the csproj version and the GitHub release step is skipped.'
+          }
+          else {
+            'is_dry_run=false' >> $env:GITHUB_OUTPUT
+            "asset_tag=$env:REF_NAME" >> $env:GITHUB_OUTPUT
+          }
 
       - name: Install pinned .NET SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -148,15 +172,28 @@ jobs:
 
       - name: Version consistency (tag vs assembly)
         shell: pwsh
+        env:
+          ASSET_TAG: ${{ steps.mode.outputs.asset_tag }}
+          IS_DRY_RUN: ${{ steps.mode.outputs.is_dry_run }}
         run: |
-          $tag = $env:GITHUB_REF_NAME
+          $csproj = [xml](Get-Content src/zEClass/zEClass.csproj)
+          $declared = $csproj.Project.PropertyGroup.Version
+          if ($env:IS_DRY_RUN -eq 'true') {
+            # No tag exists on a manual run: the real tag gate stays with the
+            # tag-triggered run; here we prove the declared version is SemVer.
+            if ($declared -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+              Write-Error "csproj Version '$declared' is not SemVer."
+              exit 1
+            }
+            Write-Host "Dry run: csproj version $declared is valid SemVer (tag check deferred)."
+            exit 0
+          }
+          $tag = $env:ASSET_TAG
           if ($tag -notmatch '^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
             Write-Error "Tag '$tag' is not SemVer (expected v1.2.3)."
             exit 1
           }
           $version = $tag.TrimStart('v').Split('-')[0]
-          $csproj = [xml](Get-Content src/zEClass/zEClass.csproj)
-          $declared = $csproj.Project.PropertyGroup.Version
           if ($declared -ne $version) {
             Write-Error "Tag version $version does not match csproj Version $declared."
             exit 1
@@ -165,9 +202,11 @@ jobs:
 
       - name: Package release assets
         shell: pwsh
+        env:
+          ASSET_TAG: ${{ steps.mode.outputs.asset_tag }}
         run: |
           foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
-            $zip = Join-Path 'artifacts' "zEClass-$($env:GITHUB_REF_NAME)-$rid.zip"
+            $zip = Join-Path 'artifacts' "zEClass-$env:ASSET_TAG-$rid.zip"
             Compress-Archive -Path (Join-Path (Join-Path 'publish' $rid) '*') -DestinationPath $zip -CompressionLevel Optimal
             if (-not (Test-Path $zip)) { throw "missing $zip" }
           }
@@ -185,6 +224,8 @@ jobs:
 
       - name: Release manifest
         shell: pwsh
+        env:
+          ASSET_TAG: ${{ steps.mode.outputs.asset_tag }}
         run: |
           $sbomHash = (Get-FileHash (Join-Path 'artifacts' 'zEClass-bom.json') -Algorithm SHA256).Hash.ToLowerInvariant()
           $manifest = foreach ($file in (Get-ChildItem artifacts -File | Where-Object { $_.Name -ne 'SHA256SUMS.txt' -and $_.Name -ne 'release-manifest.json' })) {
@@ -201,7 +242,7 @@ jobs:
             }
             [ordered]@{
               product = 'zEClass'
-              version = $env:GITHUB_REF_NAME
+              version = $env:ASSET_TAG
               commit = $env:GITHUB_SHA
               artifact = $file.Name
               sha256 = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -224,12 +265,14 @@ jobs:
       - name: Upload release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-${{ github.ref_name }}
+          name: release-${{ steps.mode.outputs.asset_tag }}
           path: artifacts/
           if-no-files-found: error
           retention-days: 30
 
       - name: Create GitHub release
+        # Push-event only: a workflow_dispatch dry run must never publish.
+        if: github.event_name == 'push'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

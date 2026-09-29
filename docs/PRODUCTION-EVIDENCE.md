@@ -101,7 +101,9 @@
   review: need panel machine and humans.
 - Authenticode signing: needs a real certificate + GitHub secrets
   (`SIGN_PFX_BASE64`/`SIGN_PFX_PASSWORD`); release path blocked until then.
-- Release dry-run tag (`v1.0.0`): pushing a tag publishes a release, so it
-  stays an operator step after hardware + signing evidence exist.
+- Release dry-run: `release.yml` now accepts `workflow_dispatch` as a
+  no-publish dry run (manual run from the Actions tab — no tag, never creates
+  a GitHub release); the real `v1.0.0` tag stays an operator step after
+  hardware + signing evidence exist.
 - Branch protection + PR review trail: needs authenticated GitHub admin
   (`gh auth login` device flow expired) — repo currently has 0 PRs.

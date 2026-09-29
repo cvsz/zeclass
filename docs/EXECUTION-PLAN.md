@@ -21,8 +21,10 @@ pending at last check.
    the browser.
 3. Watch CI: build, format, tests, soak, audit, hygiene, PSScriptAnalyzer,
    per-RID publish, SBOM. Fix forward, never weaken gates.
-4. Tag `v1.0.0` to exercise the version gate + manifest + signing path
-   (dry-run first with `RELEASE_SIGNING_REQUIRED` unset).
+4. Exercise the release pipeline: run `release.yml` via **workflow_dispatch**
+   (safe dry run — builds, tests, signing gate, manifest; never publishes, no
+   tag needed). The real tag `v1.0.0` stays an operator step afterwards, gated
+   on hardware + signing evidence.
 5. Configure branch protection (required checks, no force push).
 
 ## Next verification (panel machine)
