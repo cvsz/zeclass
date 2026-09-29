@@ -21,14 +21,13 @@
   soak 6/6; format clean; vulnerability audit clean; both `install.ps1` and
   `uninstall.ps1` parse and run under Windows PowerShell 5.1.
 - CI evidence (GitHub Actions, API-verified): `CI` workflow run **success** on
-  `db344d3`, `02c691a`, `c86f9ed`, `d7c3bee` (restore, format, build,
-  unit+integration, soak, dependency audit, workflow hygiene, PSScriptAnalyzer,
-  per-RID publish, checksums, SBOM, repository-baseline). `CodeQL` workflow
-  **success** on `db344d3`, `02c691a`, `c86f9ed`. Runs for `52e9ef7` were still
-  in progress when this record was written; `release.yml` (tag path) has never
-  run and no tags exist. GitHub Security pages were not browsed from here —
-  dependency-review runs only on PRs and no PR exists (`gh auth login` device
-  flow expired; repo has 0 issues / 0 PRs / 0 tags).
+  `db344d3`, `02c691a`, `c86f9ed`, `d7c3bee`, `52e9ef7`, `86a6924` (restore,
+  format, build, unit+integration, soak, dependency audit, workflow hygiene,
+  PSScriptAnalyzer, per-RID publish, checksums, SBOM, repository-baseline).
+  `CodeQL` workflow **success** through `52e9ef7`. `release.yml` (tag path) has
+  never run and no tags exist. GitHub Security pages were not browsed from
+  here — dependency-review runs only on PRs and no PR exists (`gh auth login`
+  device flow expired; repo has 0 issues / 0 PRs / 0 tags).
 - Live-hardware API evidence (this machine): SetupAPI probe 12/12 HID vs
   independent recount; description-based classifier reports the three
   "HID-compliant touch screen" interfaces as `TouchScreen` (VID 0483/1FD2 now
