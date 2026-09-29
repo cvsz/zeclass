@@ -30,16 +30,21 @@ Block the release while any box is unchecked.
 
 - [x] unit / integration / adversarial / soak / persistence / importer /
       recorder / native interop (local evidence)
-- [ ] installer end-to-end on target machine
+- [ ] installer end-to-end on target machine — **local E2E done** (4-case
+      install matrix + 6-case uninstall matrix, PS 5.1, this machine);
+      target-panel run still pending
 - [ ] hardware touch/pen matrix on panel machine
 - [ ] accessibility + localization human passes
 
 ## Security
 
-- [ ] CodeQL green (CI)
+- [x] CodeQL green (CI) — workflow success on `db344d3`, `02c691a`,
+      `c86f9ed`, `d7c3bee` (API-verified); no findings surfaced
 - [x] dependency scan clean (local NuGet audit)
-- [ ] secret scan (CI / GitHub Security)
-- [x] PowerShell parse check (`install.ps1`); PSScriptAnalyzer via CI
+- [ ] secret scan (GitHub Security pages not browsed from here; CI
+      repository-baseline secret-*file-name* check passes)
+- [x] PowerShell parse check (`install.ps1` + `uninstall.ps1`); PSScriptAnalyzer
+      green in CI
 - [x] workflow hardening (SHA-pinned actions, least privilege; hygiene job)
 - [x] SBOM (CI CycloneDX job)
 - [x] no embedded secrets (reviewed; none found)
@@ -47,14 +52,16 @@ Block the release while any box is unchecked.
 
 ## Reliability / release
 
-- [x] crash-safe save, autosave + recovery, atomic replacement
-- [x] installer rollback, hash/PE verification
+- [x] crash-safe save (tmp→flush→rename, `.bak`, read-back, stale-temp
+      recovery), autosave + recovery, atomic replacement
+- [x] installer rollback, hash/PE verification; uninstaller scoped removal
 - [x] recording limits, import cleanup
 - [ ] Authenticode signing + timestamp + chain verification (release job;
       needs secrets)
 - [x] SHA-256 + SBOM + `release-manifest.json` (workflow)
 - [x] changelog updated; roadmap updated (`docs/ROADMAP.md`, README counts)
-- [ ] production evidence for CI-only rows
+- [x] production evidence for CI-only rows — CI/CodeQL success recorded in
+      `PRODUCTION-EVIDENCE.md` and `VERIFICATION-MATRIX.md` (tag path still unrun)
 
 ## Docs
 

@@ -1,11 +1,14 @@
 # Execution plan (remaining)
 
-Status: 12 slices implemented and locally verified (see
-`PRODUCTION-EVIDENCE.md`). Git history: `fd392a0` initial import,
-`db344d3` digitizer classification, plus the trust-boundary batch
-(board format version, string caps, crash-safe save backup/read-back/
-stale-temp recovery, recorder failure-path tests, performance budgets).
-All pushed to `origin/main`; CI runs there.
+Status: 15 slices implemented and locally verified (see
+`PRODUCTION-EVIDENCE.md`). Git history on `origin/main`: `fd392a0`
+initial import → `db344d3` digitizer classification → `02c691a`
+trust boundary batch (board format version, string caps, crash-safe save
+backup/read-back/stale-temp recovery, recorder failure-path tests,
+performance budgets) → `c86f9ed` installer precheck fix + installer E2E
+→ `d7c3bee` accessibility name contract → `52e9ef7` uninstaller + E2E.
+CI + CodeQL green on every push through `d7c3bee`; `52e9ef7` runs were
+pending at last check.
 
 ## Immediate (operator with git + GitHub)
 
