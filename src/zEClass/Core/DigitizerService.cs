@@ -52,9 +52,15 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
 {
     private const uint DigcfPresent = 0x00000002;
     private const uint DigcfDeviceInterface = 0x00000010;
+    private const uint FileReadData = 0x00000001;
+    private const uint FileWriteData = 0x00000002;
     private const uint FileReadAttributes = 0x00000080;
     private const uint ShareReadWrite = 0x00000003;
     private const uint OpenExisting = 3;
+
+    // sizeof(SP_DEVINFO_DATA): DWORD + GUID + DWORD + pointer, padded to pointer
+    // alignment (32 bytes on x64, 28 bytes on x86).
+    private static readonly int DevInfoDataSize = Marshal.SizeOf<SP_DEVINFO_DATA>();
 
     /// <summary>Known interactive-panel and pen-digitizer USB vendor IDs.</summary>
     private static readonly HashSet<ushort> PanelVendors = new()
@@ -130,10 +136,33 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
                     try
                     {
                         WriteCbSize(detail, detailSize);
-                        if (!SetupDiGetDeviceInterfaceDetail(hDevInfo, ifData, detail, required,
-                                out _, IntPtr.Zero))
+
+                        // Fetch SP_DEVINFO_DATA alongside the path so the Windows device
+                        // description (SPDRP_DEVICEDESC, e.g. "HID-compliant touch screen")
+                        // can be used for classification. SP_DEVINFO_DATA is blittable, so
+                        // zero-filling the block and patching cbSize is equivalent to a
+                        // structure copy. If the call with devInfoData fails for any reason,
+                        // retry without it: the path alone is still usable.
+                        string? deviceDesc = null;
+                        var devInfoDataPtr = Marshal.AllocHGlobal(DevInfoDataSize);
+                        try
                         {
-                            continue;
+                            Marshal.WriteInt32(devInfoDataPtr, 0, DevInfoDataSize);
+                            if (SetupDiGetDeviceInterfaceDetail(hDevInfo, ifData, detail, required,
+                                    out _, devInfoDataPtr))
+                            {
+                                var devInfoData = Marshal.PtrToStructure<SP_DEVINFO_DATA>(devInfoDataPtr);
+                                deviceDesc = GetDeviceDescription(hDevInfo, ref devInfoData);
+                            }
+                            else if (!SetupDiGetDeviceInterfaceDetail(hDevInfo, ifData, detail, required,
+                                         out _, IntPtr.Zero))
+                            {
+                                continue;
+                            }
+                        }
+                        finally
+                        {
+                            Marshal.FreeHGlobal(devInfoDataPtr);
                         }
 
                         // SP_DEVICE_INTERFACE_DETAIL_DATA_W stores DWORD cbSize at offset 0
@@ -143,7 +172,7 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
                         var path = Marshal.PtrToStringUni(detail + 4);
                         if (!string.IsNullOrEmpty(path))
                         {
-                            found.Add(Describe(path!));
+                            found.Add(Describe(path!, deviceDesc));
                         }
                     }
                     finally
@@ -167,38 +196,85 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
 
     private static void WriteCbSize(IntPtr buffer, int size) => Marshal.WriteInt32(buffer, size);
 
-    private static DigitizerDeviceInfo Describe(string path)
+    // Reads SPDRP_DEVICEDESC (the Windows device description) for a device info node.
+    // The standard two-call pattern: the null-buffer probe fails with
+    // ERROR_INSUFFICIENT_BUFFER and reports the required byte count; a device with no
+    // description reports zero and degrades to null (the caller falls back to path
+    // heuristics). Any failure degrades to null; this never throws for untrusted input.
+    private static string? GetDeviceDescription(IntPtr hDevInfo, ref SP_DEVINFO_DATA devInfoData)
+    {
+        _ = SetupDiGetDeviceRegistryProperty(hDevInfo, ref devInfoData, SPDRP_DEVICEDESC,
+            out _, IntPtr.Zero, 0, out var required);
+        if (required == 0)
+        {
+            return null;
+        }
+
+        var buffer = Marshal.AllocHGlobal((int)required);
+        try
+        {
+            return SetupDiGetDeviceRegistryProperty(hDevInfo, ref devInfoData, SPDRP_DEVICEDESC,
+                out _, buffer, required, out _)
+                ? Marshal.PtrToStringUni(buffer)
+                : null;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    private static DigitizerDeviceInfo Describe(string path, string? deviceDesc)
     {
         ushort vid = 0;
         ushort pid = 0;
         string? manufacturer = null;
+        DigitizerKind kind = DigitizerKind.External;
+
+        // HidP_GetCaps needs read access to the device. Touch screens are typically held
+        // open by the system HID stack, so this open often fails on exactly the devices we
+        // care about; that is expected and the caller falls back to SPDRP_DEVICEDESC.
+        using (var handle = CreateFileW(path, FileReadData | FileWriteData, ShareReadWrite,
+                     IntPtr.Zero, OpenExisting, 0, IntPtr.Zero))
+        {
+            if (!handle.IsInvalid)
+            {
+                kind = ClassifyByHidCaps(handle);
+            }
+        }
 
         // HidD_GetAttributes and HidD_GetManufacturerString take an open device handle, not
         // a path string; passing a path makes them fail with ERROR_INVALID_HANDLE and leaves
         // VID/PID at zero. FILE_READ_ATTRIBUTES with read/write sharing is the read-only way
         // in, and a device that refuses the open degrades to unknown ids instead of crashing.
-        using var handle = CreateFileW(path, FileReadAttributes, ShareReadWrite,
+        using var attrHandle = CreateFileW(path, FileReadAttributes, ShareReadWrite,
             IntPtr.Zero, OpenExisting, 0, IntPtr.Zero);
-        if (!handle.IsInvalid)
+        if (!attrHandle.IsInvalid)
         {
             var attributes = new HidAttributes
             {
                 Size = (uint)Marshal.SizeOf<HidAttributes>(),
             };
-            if (HidD_GetAttributes(handle, ref attributes))
+            if (HidD_GetAttributes(attrHandle, ref attributes))
             {
                 vid = attributes.VendorID;
                 pid = attributes.ProductID;
             }
 
             var buffer = new byte[512];
-            if (HidD_GetManufacturerString(handle, buffer, buffer.Length) && buffer[0] != 0)
+            if (HidD_GetManufacturerString(attrHandle, buffer, buffer.Length) && buffer[0] != 0)
             {
                 manufacturer = Decode(buffer);
             }
         }
 
-        var kind = InferKind(path, vid);
+        // HID caps unreadable (common for system-held touch screens): fall back to the
+        // Windows device description, then the path/vendor heuristic.
+        if (kind == DigitizerKind.External)
+        {
+            kind = InferKind(path, vid, deviceDesc);
+        }
+
         var pressure = kind is DigitizerKind.Pen or DigitizerKind.TouchScreen
             or DigitizerKind.TouchAndPen;
         return new DigitizerDeviceInfo(
@@ -212,8 +288,32 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
             manufacturer);
     }
 
-    private static DigitizerKind InferKind(string path, ushort vid)
+    // Classification seam: Windows device description first (authoritative when the
+    // driver reports one), then the interface path, then the known-panel vendor list.
+    // Internal so the fallback chain is unit-testable without hardware.
+    internal static DigitizerKind InferKind(string path, ushort vid, string? deviceDesc)
     {
+        // First try Windows device description (e.g., "HID-compliant touch screen")
+        if (!string.IsNullOrEmpty(deviceDesc))
+        {
+            var desc = deviceDesc.ToLowerInvariant();
+            var isTouch = desc.Contains("touch");
+            var isPen = desc.Contains("pen") || desc.Contains("stylus");
+            if (isTouch && isPen)
+            {
+                return DigitizerKind.TouchAndPen;
+            }
+            if (isTouch)
+            {
+                return DigitizerKind.TouchScreen;
+            }
+            if (isPen)
+            {
+                return DigitizerKind.Pen;
+            }
+        }
+
+        // Fall back to path-based heuristic
         var lower = path.ToLowerInvariant();
         var name = lower[(lower.LastIndexOf('\\') + 1)..];
         if (name.Contains("touch") || name.Contains("digitizer") || name.Contains("digitzer"))
@@ -355,10 +455,96 @@ public sealed class SetupApiDigitizerProbe : IDigitizerProbe
     [DllImport("hid.dll", SetLastError = true)]
     private static extern void HidD_GetHidGuid(out Guid guid);
 
+    [DllImport("setupapi.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetupDiGetDeviceRegistryProperty(IntPtr deviceInfoSet,
+        ref SP_DEVINFO_DATA deviceInfoData, uint property, out uint propertyRegDataType,
+        IntPtr propertyBuffer, uint propertyBufferSize, out uint requiredSize);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SP_DEVINFO_DATA
+    {
+        public uint cbSize;
+        public Guid ClassGuid;
+        public uint DevInst;
+        public IntPtr Reserved;
+    }
+
+    private const uint SPDRP_DEVICEDESC = 0x00000000; // Device description (friendly name)
+
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern SafeFileHandle CreateFileW(string fileName, uint desiredAccess,
         uint shareMode, IntPtr securityAttributes, uint creationDisposition,
         uint flagsAndAttributes, IntPtr templateFile);
+
+    // ---- HID caps for digitizer classification ---------------------------------
+    // Usage Page 0x0D = Digitizers; Usage 0x04 = Touch Screen, 0x02 = Pen, 0x03 = Touch+Pen
+
+    [DllImport("hid.dll", SetLastError = true)]
+    private static extern bool HidD_GetPreparsedData(SafeFileHandle handle, out IntPtr preparsedData);
+
+    [DllImport("hid.dll", SetLastError = true)]
+    private static extern int HidP_GetCaps(IntPtr preparsedData, out HidCaps caps);
+
+    [DllImport("hid.dll", SetLastError = true)]
+    private static extern bool HidD_FreePreparsedData(IntPtr preparsedData);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct HidCaps
+    {
+        public ushort UsagePage;
+        public ushort Usage;
+        public ushort InputReportByteLength;
+        public ushort OutputReportByteLength;
+        public ushort FeatureReportByteLength;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 17)]
+        public ushort[] Reserved;
+        public ushort NumberLinkCollectionNodes;
+        public ushort NumberInputButtonCaps;
+        public ushort NumberInputValueCaps;
+        public ushort NumberInputDataIndices;
+        public ushort NumberOutputButtonCaps;
+        public ushort NumberOutputValueCaps;
+        public ushort NumberOutputDataIndices;
+        public ushort NumberFeatureButtonCaps;
+        public ushort NumberFeatureValueCaps;
+        public ushort NumberFeatureDataIndices;
+    }
+
+    private static DigitizerKind ClassifyByHidCaps(SafeFileHandle handle)
+    {
+        if (!HidD_GetPreparsedData(handle, out var preparsedData))
+        {
+            return DigitizerKind.External;
+        }
+
+        try
+        {
+            var result = HidP_GetCaps(preparsedData, out var caps);
+            if (result != 0)
+            {
+                return DigitizerKind.External;
+            }
+
+            // Usage Page 0x0D = Digitizers
+            if (caps.UsagePage == 0x0D)
+            {
+                return caps.Usage switch
+                {
+                    0x04 => DigitizerKind.TouchScreen,  // Touch screen
+                    0x02 => DigitizerKind.Pen,          // Pen/stylus
+                    0x03 => DigitizerKind.TouchAndPen,  // Touch + pen combo
+                    _ => DigitizerKind.External
+                };
+            }
+
+            return DigitizerKind.External;
+        }
+        finally
+        {
+            HidD_FreePreparsedData(preparsedData);
+        }
+    }
 
     [DllImport("hid.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

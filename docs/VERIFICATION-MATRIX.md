@@ -7,12 +7,13 @@ are pending on the classroom machine.
 | Claim | Method | Result | Evidence / limitation |
 |---|---|---|---|
 | Release build, 0 warnings/errors | TEST | PASS | `dotnet build zEClass.sln -c Release`, 0/0 |
-| Unit+integration 514 pass, 1 conditional skip | TEST | PASS | `dotnet test --filter Category!=Soak`; skip = vendor-manual PDF (`ZECLASS_VENDOR_MANUAL`) |
+| Unit+integration 533 pass, 1 conditional skip | TEST | PASS | `dotnet test --filter Category!=Soak`; skip = vendor-manual PDF (`ZECLASS_VENDOR_MANUAL`) |
 | Soak 6/6 | TEST | PASS | history bounds, round-trip stability, erase ordering |
 | Format clean | TEST | PASS | `dotnet format --verify-no-changes` |
 | No vulnerable packages | DEPENDENCY-SCAN | PASS | `dotnet list package --vulnerable --include-transitive`: none |
 | Build-compiles interop (LibraryImport) | TEST | PASS | fixed `AllowUnsafeBlocks` + bool marshalling; build green |
 | SetupAPI enumeration correct | TEST (live API) | PASS | 12/12 HID vs raw SetupAPI recount, paths well-formed, VID/PID non-zero |
+| Digitizer classification (description → path → vendor) | TEST + TEST (live API) | PASS | 19 `InferKind` cases; live probe classifies 3 touch interfaces as `TouchScreen` on this machine |
 | Touch/pen/pressure/tilt/palm/gestures/calibration | HARDWARE | NOT DONE | no panel on this machine; use in-app Acceptance test on panel PC |
 | Office ZIP bombs/traversal/mislabel | TEST | PASS | 33/33 `ImporterTests` incl. bomb, traversal, ratio, caps |
 | Board aggregate caps | TEST | PASS | `BoardSerializerTests` trim/budget/clamp cases |

@@ -29,5 +29,6 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
 - PDF: bounded reads (TOCTOU-safe capped copy, head+tail page-count scan)
 - Installer: hash/PE verification of staged artifact, rollback to backup on install/verify failure, only stops instances running from the install directory
 - Release workflow: SemVer tag check, tag-vs-csproj version gate, per-artifact `release-manifest.json` (hashes, signature status, SBOM binding)
+- Digitizer detection: classification now uses a three-stage fallback — HID caps (`HidP_GetCaps`, usage page 0x0D) when the device can be opened, then the Windows device description (`SPDRP_DEVICEDESC`, e.g. "HID-compliant touch screen"), then path keywords and the known-panel vendor list; "pen"+"touch" descriptions classify as `TouchAndPen`; previously undetectable touch controllers (VID 0483/1FD2) now report `TouchScreen` with pressure
 
 ### Security

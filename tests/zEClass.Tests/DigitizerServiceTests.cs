@@ -116,6 +116,63 @@ public sealed class DigitizerServiceTests
         Assert.NotNull(status.Devices);
     }
 
+    // ---- InferKind fallback chain: description → path → vendor list ----------------
+
+    [Theory]
+    [InlineData("HID-compliant touch screen", DigitizerKind.TouchScreen)]
+    [InlineData("HID-compliant touch screen (USB)", DigitizerKind.TouchScreen)]
+    [InlineData("HID-compliant pen and touch", DigitizerKind.TouchAndPen)]
+    [InlineData("HID-compliant pen", DigitizerKind.Pen)]
+    [InlineData("Touch Screen (Elan)", DigitizerKind.TouchScreen)]
+    [InlineData("HID-compliant mouse", DigitizerKind.External)]
+    [InlineData("Standard 101/102-Key or Microsoft Natural Keyboard", DigitizerKind.External)]
+    [InlineData("", DigitizerKind.External)]
+    public void InferKind_DeviceDescriptionDrivesClassification(string description, DigitizerKind expected)
+    {
+        var kind = SetupApiDigitizerProbe.InferKind(
+            @"\\?\hid#vid_1234&pid_5678#7&abcdef&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+            vid: 0x1234,
+            string.IsNullOrEmpty(description) ? null : description);
+
+        Assert.Equal(expected, kind);
+    }
+
+    [Theory]
+    [InlineData(@"\\?\hid#touchscreen#7&abc&0&0000", DigitizerKind.TouchScreen)]
+    [InlineData(@"\\?\hid#digitizer#7&abc&0&0000", DigitizerKind.TouchScreen)]
+    [InlineData(@"\\?\hid#pen#7&abc&0&0000", DigitizerKind.Pen)]
+    [InlineData(@"\\?\hid#stylus#7&abc&0&0000", DigitizerKind.Pen)]
+    [InlineData(@"\\?\hid#vid_1234&pid_5678#7&abc&0&0000", DigitizerKind.External)]
+    [InlineData("", DigitizerKind.External)] // malformed path: no separator, no keywords
+    public void InferKind_FallsBackToPathKeywordsWhenNoDescription(string path, DigitizerKind expected)
+    {
+        Assert.Equal(expected, SetupApiDigitizerProbe.InferKind(path, 0x1234, deviceDesc: null));
+    }
+
+    [Theory]
+    [InlineData((ushort)0x04F3, DigitizerKind.TouchAndPen)] // ELAN — known panel vendor
+    [InlineData((ushort)0x056A, DigitizerKind.TouchAndPen)] // Wacom — known pen vendor
+    [InlineData((ushort)0x1234, DigitizerKind.External)]     // unknown vendor
+    [InlineData((ushort)0x0000, DigitizerKind.External)]     // vendor id unreadable
+    public void InferKind_FallsBackToKnownPanelVendorList(ushort vid, DigitizerKind expected)
+    {
+        Assert.Equal(expected, SetupApiDigitizerProbe.InferKind(
+            @"\\?\hid#vid_0000&pid_0000#7&abc&0&0000", vid, deviceDesc: null));
+    }
+
+    [Fact]
+    public void InferKind_DeviceDescriptionWinsOverUninformativePath()
+    {
+        // The regression this guards: Dell/STM touch controllers enumerate with paths that
+        // contain no keywords and vendor ids missing from the panel list, but Windows
+        // reports SPDRP_DEVICEDESC = "HID-compliant touch screen".
+        var kind = SetupApiDigitizerProbe.InferKind(
+            @"\\?\hid#vid_0483&pid_a581&mi_00&col03#7&2ea5f116&0&0002", 0x0483,
+            "HID-compliant touch screen");
+
+        Assert.Equal(DigitizerKind.TouchScreen, kind);
+    }
+
     [Fact]
     public void RealProbe_ReportsDigitizerSummaryForThisMachine()
     {
