@@ -7,7 +7,7 @@ are pending on the classroom machine.
 | Claim | Method | Result | Evidence / limitation |
 |---|---|---|---|
 | Release build, 0 warnings/errors | TEST | PASS | `dotnet build zEClass.sln -c Release`, 0/0 |
-| Unit+integration 556 pass, 1 conditional skip | TEST | PASS | `dotnet test --filter Category!=Soak`; skip = vendor-manual PDF (`ZECLASS_VENDOR_MANUAL`) |
+| Unit+integration 559 pass, 1 conditional skip | TEST | PASS | `dotnet test --filter Category!=Soak`; skip = vendor-manual PDF (`ZECLASS_VENDOR_MANUAL`) |
 | Soak 6/6 | TEST | PASS | history bounds, round-trip stability, erase ordering |
 | Format clean | TEST | PASS | `dotnet format --verify-no-changes` |
 | No vulnerable packages | DEPENDENCY-SCAN | PASS | `dotnet list package --vulnerable --include-transitive`: none |
@@ -35,7 +35,7 @@ are pending on the classroom machine.
 | Release manifest/version gate/signing | CI | NOT RUN | steps added to `release.yml`; execute on a `v*` tag |
 | Per-RID publish (x64/ARM64/x86) | CI | NOT RUN HERE | `build/publish.ps1` + CI publish job; needs full NuGet restore |
 | Screen/audio recording limits | TEST | PASS | existing recorder test suites green (26/26 NDI/audio/recording) |
-| Accessibility/keyboard/screen-reader | MANUAL | NOT DONE | automation names present; walkthrough pending |
+| Accessibility/keyboard/screen-reader | TEST + MANUAL | PARTIAL | static name contract for all 49 window controls PASS (`AccessibilityTests`); keyboard-only + NVDA walkthrough still NOT DONE |
 | Native-speaker localization review | MANUAL | NOT DONE | machine audit green; fluency unverified |
 
 Legend: TEST = local `dotnet` evidence; CI = workflow must run; INFERENCE avoided throughout.

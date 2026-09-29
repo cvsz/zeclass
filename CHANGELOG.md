@@ -36,5 +36,6 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
 - Persistence: previous board retained as `.bak` before every replace; read-back length verification restores the backup if the write came up short; `RecoverStaleTempFiles` reconciles interrupted saves at startup (autosave directory) and on open (promotes a valid orphan temp, moves a corrupt one aside as `.corrupt`, deletes debris beside a healthy board)
 - Screen recorder: failure-path tests — low-disk trip mid-recording finalizes captured frames, interrupted final swap keeps the target and leaves no temp, dispose-without-stop finalizes, unusable target fails cleanly
 - Performance budgets: explicit thresholds for 10k-stroke save/load, max-cap hostile board load, and page-switch lookup on a 200-page term board
+- Accessibility: static-contract tests enforce an accessible name (explicit `AutomationProperties.Name`, tooltip, or text content) on every button in `MainWindow.xaml`, plus window name and live-region `LiveSetting`; NVDA/tab-order walkthrough still pending on hardware
 
 ### Security
