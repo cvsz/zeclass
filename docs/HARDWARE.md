@@ -106,8 +106,10 @@ as a way to exercise the flow.
 ## 7. Verifying the panel: the acceptance run
 
 Everything above assumes the panel works. That assumption is the largest remaining risk in this
-project, and it cannot be discharged from a development machine with no panel attached. So the app
-ships a guided run that produces evidence instead of an assertion.
+project, so the app ships a guided run that produces evidence instead of an assertion. It can be
+exercised anywhere a touch surface is attached — as of 2026-09-30 this development machine has two
+(the Dell P2418HT's in-cell touch and an unidentified rear-port controller) — but the classroom
+panel's own acceptance pass is still required before release.
 
 Click **Acceptance test** in the status bar. It walks through one capability at a time, shows the
 instruction, and records what actually arrives through the real input pipeline — the same

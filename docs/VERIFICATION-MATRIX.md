@@ -21,7 +21,8 @@ are pending on the classroom machine.
 | Stale temp recovery | TEST | PASS | promote valid orphan, `.corrupt` aside, delete debris beside primary, no-op on missing dir |
 | Recorder failure paths | TEST | PASS | low-disk trip finalizes prefix, interrupted swap leaves no debris, dispose finalizes, bad target clean fail |
 | Performance budgets (explicit ms) | TEST | PASS | 10k-stroke save/load <10 s, hostile max-cap load <5 s, 1000 page lookups <2 s, mixed import batch (images + Office preview + PDF parse) <5 s |
-| Touch/pen/pressure/tilt/palm/gestures/calibration | HARDWARE | NOT DONE | no panel on this machine; use in-app Acceptance test on panel PC |
+| Touch detection (live digitizer probe) | HARDWARE | PASS | 2026-09-30 live `DigitizerService` probe on this machine: `TouchActive=true`, `Ready=true`; 3 touch interfaces classified `TouchScreen` with pressure — `VID_1FD2` "LGDisplay Incell Touch" (Dell P2418HT via its upstream hub, identity INFERENCE) and `VID_0483` on rear port HS02 (device unidentified); Dell P2424HT absent from the tree |
+| Touch input/alignment/calibration/palm/gestures acceptance | HARDWARE | NOT DONE | detection only; the in-app Acceptance run with a human touching the screen is still required, on this machine's surfaces and on the classroom panel; no pen device attached anywhere |
 | Office ZIP bombs/traversal/mislabel | TEST | PASS | 42/42 `ImporterTests` incl. bomb, traversal, ratio, caps, plus the full §12 fixture matrix (EMF, WMF, no-preview, malformed ZIP, DOCX media, PNG/JPEG content-beats-name, DOCM/PPTM) |
 | Board aggregate caps | TEST | PASS | `BoardSerializerTests` trim/budget/clamp cases |
 | Save-As transactional, dirty prompts, autosave revisions, recovery predicate | TEST | PASS | `DocumentSessionTests` (12); UI wiring thin and untested headless |

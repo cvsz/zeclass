@@ -32,12 +32,21 @@
   `workflow_dispatch`) has run and no tags exist. GitHub Security pages were
   not browsed from here — dependency-review runs only on PRs and no PR exists
   (`gh auth login` device flow expired; repo has 0 issues / 0 PRs / 0 tags).
-- Live-hardware API evidence (this machine): SetupAPI probe 12/12 HID vs
-  independent recount; description-based classifier reports the three
-  "HID-compliant touch screen" interfaces as `TouchScreen` (VID 0483/1FD2 now
-  detected). No touch/pen *panel* attached — the Dell P2424HT touch controller
-  is absent from the USB tree until its USB-B upstream cable is connected, so
-  the touch/pen/pressure/calibration matrix is still blocked on hardware.
+- Live-hardware API evidence (this machine, re-run 2026-09-30): SetupAPI probe
+  12/12 HID vs independent recount; the live `DigitizerService` probe reports
+  `TouchActive=true, PenActive=false, UsbDigitizerPresent=true, Ready=true`
+  over 13 enumerated devices, classifying **3 touch interfaces with pressure**:
+  (a) `VID_1FD2/PID_8105`, bus-reported "LGDisplay Incell Touch", manufacturer
+  "Melfas", behind a Microchip hub tree on a root port — the connected Dell
+  P2418HT's touch surface (identity INFERENCE from bus description + hub
+  topology); (b) `VID_0483/PID_A581` (STMicroelectronics, no product strings)
+  with two touch interfaces plugged directly into motherboard rear port
+  `HS02` — physical device NOT IDENTIFIED (unplug rear USB port 2 to pin it
+  down). Keyboard/mouse/hub HID collections are correctly classified
+  `External`, not digitizers. The Dell **P2424HT is still absent**: no
+  `VID_413C` device and no P2424 display anywhere in the tree. Digitizer
+  *detection* is verified end-to-end; touch *input* acceptance (ink, accuracy,
+  palm, gestures, calibration) still needs the interactive pass with a human.
 - Installer E2E (this machine, PS 5.1): 4-case install matrix (fresh exit 0 +
   SHA-256 verify + app start/stop; reinstall w/o `-Force` exit 3; `-Force`
   upgrade exit 0 with backup retained; corrupt artifact exit 4 with rollback and
