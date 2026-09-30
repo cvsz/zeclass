@@ -19,6 +19,17 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
   explicit DOCM/PPTM support; plus the AGENTS §25 import-latency budget
   (mixed images + Office preview + PDF parse batch < 5 s). `ImporterTests`
   33 → 42; total 566 → 575 tests
+- GPG commit signing: per-user GnuPG 2.5.24 (installer SHA-256 verified
+  against the winget manifest), ed25519 sign-only key published to the
+  GitHub account (key id `5362594`), repo-local `commit.gpgsign=true`;
+  first signed commit `1989ee0` verified by GitHub (`verified=true`,
+  `reason=valid` via REST)
+- Repository governance: branch ruleset `protect-main` (id 24230715)
+  enforcing pull requests on `main` with required checks `build`,
+  `repository-baseline`, `analyze`, `Analyze GitHub Actions`, plus
+  force-push and branch-deletion blocks (0 bypass actors); repo settings
+  `allow_auto_merge` + `delete_branch_on_merge` enabled; Dependabot
+  `docker` ecosystem removed (no Dockerfile exists)
 
 ### Changed
 

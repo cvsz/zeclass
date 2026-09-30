@@ -1,31 +1,37 @@
 # Execution plan (remaining)
 
-Status: 15 slices implemented and locally verified (see
-`PRODUCTION-EVIDENCE.md`). Git history on `origin/main`: `fd392a0`
-initial import → `db344d3` digitizer classification → `02c691a`
-trust boundary batch (board format version, string caps, crash-safe save
-backup/read-back/stale-temp recovery, recorder failure-path tests,
-performance budgets) → `c86f9ed` installer precheck fix + installer E2E
-→ `d7c3bee` accessibility name contract → `52e9ef7` uninstaller + E2E.
-CI + CodeQL green on every push through `d7c3bee`; `52e9ef7` runs were
-pending at last check.
+Status: 19 slices implemented and locally verified (see
+`PRODUCTION-EVIDENCE.md`), via authenticated `gh` as `cvsz` (admin on the
+repo). Git history on `origin/main`:
+`fd392a0` initial import → `db344d3` digitizer classification →
+`02c691a` trust boundary batch (board format version, string caps,
+crash-safe save backup/read-back/stale-temp recovery, recorder
+failure-path tests, performance budgets) → `c86f9ed` installer precheck
+fix + installer E2E → `d7c3bee` accessibility name contract →
+`52e9ef7` uninstaller + E2E → `86a6924`/`91e76be`/`3276f04` docs passes →
+`baac507` release dry-run trigger → `eb27bae` §12 fixture matrix + §25
+import budget → `1c14708` live touch-hardware detection docs →
+`1989ee0` GPG-signed commit. CI + CodeQL green on every push through
+`1989ee0` (API-verified).
 
 ## Immediate (operator with git + GitHub)
 
 1. Review the pushed diff (`git log -p fd392a0..origin/main`).
-2. PRs for remaining history if a review trail is required
-   (`fix:`/`feat:`/`security:`/`test:` with Problem/Root-cause/
-   Implementation/Tests/Security/Performance/Compatibility/Docs/
-   Evidence/Limitations/Rollback in each body). `gh auth login` was
-   blocked on the interactive device flow — complete it or open PRs in
-   the browser.
+2. PR trail active: ruleset `protect-main` (id 24230715) enforces pull
+   requests on `main` with required checks `build`, `repository-baseline`,
+   `analyze`, `Analyze GitHub Actions`, and blocks force-push/deletion
+   (0 bypass actors). `gh` authenticated as `cvsz` (admin). Every slice from
+   here lands as one PR with the AGENTS §27 body (Problem/Root-cause/
+   Implementation/Tests/Security/Performance/Compatibility/Docs/Evidence/
+   Limitations/Rollback).
 3. Watch CI: build, format, tests, soak, audit, hygiene, PSScriptAnalyzer,
    per-RID publish, SBOM. Fix forward, never weaken gates.
 4. Exercise the release pipeline: run `release.yml` via **workflow_dispatch**
    (safe dry run — builds, tests, signing gate, manifest; never publishes, no
-   tag needed). The real tag `v1.0.0` stays an operator step afterwards, gated
-   on hardware + signing evidence.
-5. Configure branch protection (required checks, no force push).
+   tag needed). Signing secrets + `RELEASE_SIGNING_REQUIRED=true` are now
+   configured with a self-signed CI-validation certificate; the dry run still
+   needs to be triggered. The real tag `v1.0.0` stays an operator step
+   afterwards, gated on hardware + production-certificate evidence.
 
 ## Next verification (panel machine)
 
@@ -40,8 +46,11 @@ pending at last check.
 9. Portable board-asset package (design + migration + tests).
 10. Structured digitizer error taxonomy (with UX copy sign-off).
 11. Native-speaker localization review per language.
-12. Branch-protection ruleset + required-checks documentation
-    (admin action, mark verified when done).
+12. ~~Branch-protection ruleset + required-checks documentation~~ done
+    2026-09-30: ruleset `protect-main` (id 24230715) active with required
+    checks `build`, `repository-baseline`, `analyze`, `Analyze GitHub
+    Actions` — recorded in `PRODUCTION-EVIDENCE.md` slice 19 and the
+    verification matrix.
 
 ## Accepted standing risks
 
