@@ -61,6 +61,22 @@ public sealed class BoardSerializerTests : IDisposable
     }
 
     [Fact]
+    public void EnsurePages_LeavesConsistentDocumentsAlone()
+    {
+        var doc = new BoardDocument { PageCount = 3, ActivePage = 2 };
+        doc.EnsurePages();
+        doc.Pages[1].Strokes.Add(new InkStroke());
+
+        var same = doc.EnsurePages();
+
+        Assert.Same(doc, same);
+        Assert.Equal(3, doc.Pages.Count);
+        Assert.Equal(2, doc.ActivePage);
+        Assert.Single(doc.Pages[1].Strokes);
+        Assert.Equal(new[] { 0, 1, 2 }, doc.Pages.Select(p => p.Index));
+    }
+
+    [Fact]
     public void Active_ReturnsPageAtActiveIndex()
     {
         var doc = new BoardDocument { PageCount = 4, ActivePage = 2 };

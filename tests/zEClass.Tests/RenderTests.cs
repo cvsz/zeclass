@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media;
@@ -118,6 +119,25 @@ public sealed class RenderTests
 
             Assert.Equal(0, CountDarkPixels(bitmap));
         });
+    }
+
+    [Fact]
+    public void WritePdf_RefusesBeyondPageCapBeforeRendering()
+    {
+        // No UI thread needed: the guard fires before a single bitmap renders.
+        var document = new BoardDocument { PageCount = 1 };
+        document.EnsurePages();
+        var pages = Enumerable.Range(0, BoardRenderer.MaxExportPages + 1)
+            .Select(i => new BoardPage { Index = i })
+            .ToList();
+        var path = Path.Combine(
+            Path.GetTempPath(), "zEClass-export-" + Guid.NewGuid().ToString("N") + ".pdf");
+
+        var ex = Assert.Throws<InvalidDataException>(
+            () => BoardRenderer.WritePdf(path, document, pages, 400, 300));
+
+        Assert.Contains(BoardRenderer.MaxExportPages.ToString(), ex.Message);
+        Assert.False(File.Exists(path));
     }
 
     [Fact]

@@ -99,11 +99,22 @@ public static class ExportDialog
         }
     }
 
-    private static List<BoardPage> Select(BoardDocument document, IEnumerable<int> indices) =>
-        indices.Select(i => document.Pages.FirstOrDefault(p => p.Index == i))
-            .Where(p => p is not null)
-            .Select(p => p!)
+    private static List<BoardPage> Select(BoardDocument document, IEnumerable<int> indices)
+    {
+        var byIndex = new Dictionary<int, BoardPage>(document.Pages.Count);
+        foreach (var page in document.Pages)
+        {
+            if (page is not null)
+            {
+                byIndex[page.Index] = page;
+            }
+        }
+
+        return indices
+            .Where(byIndex.ContainsKey)
+            .Select(i => byIndex[i])
             .ToList();
+    }
 
     private static void WritePng(BoardDocument document, List<BoardPage> pages, InkSurface surface,
         string directory, string baseName)
