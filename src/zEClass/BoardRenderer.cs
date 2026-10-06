@@ -179,6 +179,13 @@ public static class BoardRenderer
     /// dependency-free at the cost of lossy text edges; raising
     /// <see cref="PdfJpegQuality"/> trades file size for fidelity.
     /// </summary>
+    /// <summary>
+    /// Cap on exported pages. Each page renders a full-canvas JPEG held in memory together
+    /// with the assembled file, so an unbounded export could exhaust memory; past this the
+    /// user splits the range instead of losing work to an OOM.
+    /// </summary>
+    public const int MaxExportPages = 100;
+
     public static void WritePdf(string path, BoardDocument document, IEnumerable<BoardPage> pages,
         double width, double height)
     {
@@ -186,28 +193,42 @@ public static class BoardRenderer
         ArgumentNullException.ThrowIfNull(pages);
         ArgumentNullException.ThrowIfNull(document);
 
-        var images = new List<byte[]>();
-        var imageSizes = new List<(int W, int H)>();
-        foreach (var page in pages)
+        var targets = pages.ToList();
+        if (targets.Count > MaxExportPages)
         {
-            var savedActive = document.ActivePage;
-            document.ActivePage = page.Index;
-            var bitmap = RenderPageToBitmap(document, width, height);
+            throw new InvalidDataException(
+                $"PDF export supports up to {MaxExportPages} pages; asked for {targets.Count}. " +
+                "Export a page range instead.");
+        }
+
+        var savedActive = document.ActivePage;
+        try
+        {
+            var images = new List<byte[]>();
+            var imageSizes = new List<(int W, int H)>();
+            foreach (var page in targets)
+            {
+                document.ActivePage = page.Index;
+                var bitmap = RenderPageToBitmap(document, width, height);
+
+                images.Add(EncodeJpeg(bitmap, PdfJpegQuality));
+                imageSizes.Add((bitmap.PixelWidth, bitmap.PixelHeight));
+            }
+
+            if (images.Count == 0)
+            {
+                return;
+            }
+
+            var pdf = new PdfWriter(images, imageSizes, width, height);
+            var tmp = path + ".tmp";
+            File.WriteAllBytes(tmp, pdf.Build());
+            File.Move(tmp, path, overwrite: true);
+        }
+        finally
+        {
             document.ActivePage = savedActive;
-
-            images.Add(EncodeJpeg(bitmap, PdfJpegQuality));
-            imageSizes.Add((bitmap.PixelWidth, bitmap.PixelHeight));
         }
-
-        if (images.Count == 0)
-        {
-            return;
-        }
-
-        var pdf = new PdfWriter(images, imageSizes, width, height);
-        var tmp = path + ".tmp";
-        File.WriteAllBytes(tmp, pdf.Build());
-        File.Move(tmp, path, overwrite: true);
     }
 
     /// <summary>JPEG quality used for PDF page images, 1-100.</summary>

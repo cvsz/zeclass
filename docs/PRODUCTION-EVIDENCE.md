@@ -137,10 +137,15 @@
     `RELEASE_SIGNING_REQUIRED=true` set with a self-signed CI-validation PFX
     (thumbprint `026C9BFE319DC662DC6C807E7370527FEC990F9B`, RSA-2048,
     SHA-256, 2 years, subject `CN=zEClass self-signed CI validation`); the
-    PFX and certificate were removed from this machine after upload. Chain
-    trust deliberately NOT vouched for: `Status=Valid` stays mandatory on
-    tag releases; only `workflow_dispatch` dry runs may tolerate
-    `NotTrusted` for this exact subject.
+   PFX and certificate were removed from this machine after upload. Chain
+   trust deliberately NOT vouched for: `Status=Valid` stays mandatory on
+   tag releases; only `workflow_dispatch` dry runs may tolerate
+   `NotTrusted` for this exact subject.
+20. Export state safety + page hot paths: `WritePdf` restores the active page
+    in a `finally` (mid-loop render throw no longer strands the board);
+    `MaxExportPages` (100) refuses before rendering anything; `EnsurePages`
+    fast path returns consistent documents untouched; export selection builds
+    one index map. Two regression tests (export refusal, idempotence).
 
 ## Deferred with rationale
 

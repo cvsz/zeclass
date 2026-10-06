@@ -310,6 +310,13 @@ public sealed class BoardDocument
 
     public BoardDocument EnsurePages()
     {
+        // Hot path (every Active() call): when the list already matches the count exactly,
+        // in order, with a valid active page, sorting and rebuilding are all no-ops.
+        if (IsConsistent())
+        {
+            return this;
+        }
+
         Pages.Sort((a, b) => a.Index.CompareTo(b.Index));
         for (var i = 0; i < PageCount; i++)
         {
@@ -326,6 +333,24 @@ public sealed class BoardDocument
         }
 
         return this;
+    }
+
+    private bool IsConsistent()
+    {
+        if (Pages.Count != PageCount || ActivePage < 0 || ActivePage >= PageCount)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < Pages.Count; i++)
+        {
+            if (Pages[i] is null || Pages[i].Index != i)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public BoardPage Active() => EnsurePages().Pages[ActivePage];
