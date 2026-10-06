@@ -64,5 +64,6 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
 - Accessibility: static-contract tests enforce an accessible name (explicit `AutomationProperties.Name`, tooltip, or text content) on every button in `MainWindow.xaml`, plus window name and live-region `LiveSetting`; NVDA/tab-order walkthrough still pending on hardware
 - Export state safety: `WritePdf` restores the active page in a `finally` (a render throw mid-loop no longer strands the board on the wrong page), and PDF export refuses beyond `MaxExportPages` (100) before rendering anything, surfacing through the existing export failure dialog
 - Page-index hot paths: `EnsurePages` returns consistent documents untouched (linear check instead of re-sort/rebuild on every `Active()` call); export page selection builds one index map instead of scanning per index
+- Autosave revision counters are now lock-guarded: UI-thread mutations and worker-thread completions can no longer tear or lose 64-bit revisions on x86
 
 ### Security

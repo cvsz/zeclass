@@ -146,6 +146,10 @@
     `MaxExportPages` (100) refuses before rendering anything; `EnsurePages`
     fast path returns consistent documents untouched; export selection builds
     one index map. Two regression tests (export refusal, idempotence).
+21. Autosave revision thread safety: `DocumentSession` counters are
+    lock-guarded (UI-thread mutations vs worker-thread completions could tear
+    64-bit revisions on x86 and lose increments). Concurrency regression test
+    hammers 8 threads x 500 iterations and asserts exact convergence.
 
 ## Deferred with rationale
 

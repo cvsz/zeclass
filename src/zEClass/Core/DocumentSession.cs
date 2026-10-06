@@ -18,36 +18,77 @@ public sealed class DocumentSession
     /// <summary>How many previous autosave generations to retain beside the live one.</summary>
     public const int AutosaveGenerations = 2;
 
-    public long CurrentRevision { get; private set; }
+    // Mutations arrive on the UI thread while autosave completions land on workers:
+    // without this, 64-bit revision counters can tear on x86 and updates can vanish.
+    private readonly object _gate = new();
+    private long _currentRevision;
+    private long _savedRevision;
+    private long _autosavedRevision;
+    private DateTime? _lastAutosaveUtc;
 
-    public long SavedRevision { get; private set; }
+    public long CurrentRevision
+    {
+        get { lock (_gate) { return _currentRevision; } }
+    }
 
-    public long AutosavedRevision { get; private set; }
+    public long SavedRevision
+    {
+        get { lock (_gate) { return _savedRevision; } }
+    }
 
-    public DateTime? LastAutosaveUtc { get; private set; }
+    public long AutosavedRevision
+    {
+        get { lock (_gate) { return _autosavedRevision; } }
+    }
+
+    public DateTime? LastAutosaveUtc
+    {
+        get { lock (_gate) { return _lastAutosaveUtc; } }
+    }
 
     public bool IsDirty => CurrentRevision != SavedRevision;
 
     public bool HasUnsavedAutosaveWork => CurrentRevision != AutosavedRevision;
 
-    public void NotifyModified() => CurrentRevision++;
+    public void NotifyModified()
+    {
+        lock (_gate)
+        {
+            _currentRevision++;
+        }
+    }
 
-    public void NotifySaved() => SavedRevision = CurrentRevision;
+    public void NotifySaved()
+    {
+        lock (_gate)
+        {
+            _savedRevision = _currentRevision;
+        }
+    }
 
     public void NotifyAutosaved(long revision, DateTime utcNow)
     {
         // A stale background snapshot must never move the watermark backwards: only the
         // newest completed write counts.
-        if (revision > AutosavedRevision)
+        lock (_gate)
         {
-            AutosavedRevision = revision;
-            LastAutosaveUtc = utcNow;
+            if (revision > _autosavedRevision)
+            {
+                _autosavedRevision = revision;
+                _lastAutosaveUtc = utcNow;
+            }
         }
     }
 
     /// <summary>True when a background snapshot for <paramref name="revision"/> is still worth
     /// writing: newer work has not already been autosaved while it was serializing.</summary>
-    public bool ShouldWriteAutosave(long revision) => revision > AutosavedRevision;
+    public bool ShouldWriteAutosave(long revision)
+    {
+        lock (_gate)
+        {
+            return revision > _autosavedRevision;
+        }
+    }
 
     /// <summary>
     /// True when an autosave tick should produce a snapshot: enabled, dirty, not already
@@ -55,26 +96,35 @@ public sealed class DocumentSession
     /// </summary>
     public bool ShouldAutosave(bool enabled, int intervalSeconds, DateTime utcNow)
     {
-        if (!enabled || !IsDirty || CurrentRevision == AutosavedRevision)
+        lock (_gate)
         {
-            return false;
-        }
+            // Enabled, dirty (current differs from saved), and not already autosaved at
+            // this revision; then the interval must have elapsed since the last autosave.
+            if (!enabled || _currentRevision == _savedRevision ||
+                _currentRevision == _autosavedRevision)
+            {
+                return false;
+            }
 
-        if (LastAutosaveUtc is null)
-        {
-            return true;
-        }
+            if (_lastAutosaveUtc is null)
+            {
+                return true;
+            }
 
-        return utcNow - LastAutosaveUtc.Value >= TimeSpan.FromSeconds(Math.Max(1, intervalSeconds));
+            return utcNow - _lastAutosaveUtc.Value >= TimeSpan.FromSeconds(Math.Max(1, intervalSeconds));
+        }
     }
 
     /// <summary>Called on New/Open/loaded-board: the fresh document starts clean.</summary>
     public void Reset()
     {
-        CurrentRevision = 0;
-        SavedRevision = 0;
-        AutosavedRevision = 0;
-        LastAutosaveUtc = null;
+        lock (_gate)
+        {
+            _currentRevision = 0;
+            _savedRevision = 0;
+            _autosavedRevision = 0;
+            _lastAutosaveUtc = null;
+        }
     }
 
     /// <summary>
