@@ -1,7 +1,7 @@
 # Architecture (production view)
 
-Local-first Windows 11 classroom whiteboard. WPF + .NET 8 (`net8.0-windows`,
-SDK pinned `8.0.425`), self-contained per-RID publish (`win-x64`, `win-arm64`,
+Local-first Windows 11 classroom whiteboard. WPF + .NET 10 LTS (`net10.0-windows`,
+SDK pinned `10.0.401`), self-contained per-RID publish (`win-x64`, `win-arm64`,
 `win-x86`). No telemetry, no network calls, no cloud dependencies.
 
 ## Components

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -45,11 +45,10 @@
     <AssemblyOriginatorKeyFile Condition="'$(SignPfx)' != ''">$(SignPfx)</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- For System.Drawing.Icon frame selection in ApplyIcon. Managed-only on Windows (GDI+
-         is in-box), so this adds no native payload to the install. -->
-    <PackageReference Include="System.Drawing.Common" Version="10.0.12" />
-  </ItemGroup>
+  <!-- System.Drawing.Common ships in the WindowsDesktop shared framework on .NET 10
+       (explicit reference triggers NU1510); kept reference-free deliberately. The
+       ApplyIcon frame selection uses only in-box GDI+, so this adds no native
+       payload to the install. -->
 
   <ItemGroup>
     <!-- Source of truth for the icon; regenerate with tools\IconGen. -->

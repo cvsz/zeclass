@@ -121,8 +121,8 @@ It is wired in two places, because they need different mechanisms:
     powershell -ExecutionPolicy Bypass -File build\publish.ps1
     powershell -ExecutionPolicy Bypass -File build\install.ps1
 
-Verified on Windows 10 (this machine) with .NET SDK 8.0.425 (pinned in `global.json`): 0 warnings,
-0 errors, 575 tests total: 574 passing and 1 conditional vendor-manual skip. Set
+Verified on Windows 10 (this machine) with .NET SDK 10.0.401 (pinned in `global.json`): 0 warnings,
+0 errors, 578 tests total: 577 passing and 1 conditional vendor-manual skip. Set
 `ZECLASS_VENDOR_MANUAL` to a local vendor-manual PDF to run the remaining real-document check.
 The self-contained win-x64 publish launches cleanly, and `install.ps1` has been run end to end
 against a real per-user install directory, including the digitizer precheck and a start-and-close

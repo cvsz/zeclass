@@ -42,7 +42,14 @@ import budget → `1c14708` live touch-hardware detection docs →
 
 ## Next engineering slices
 
-8. `.NET` 8 → 10 LTS migration assessment (own slice).
+8. ~~.NET 8 → 10 LTS migration assessment (own slice)~~ done
+   2026-10-08: migrated `net8.0-windows` → `net10.0-windows`, SDK pinned
+   `8.0.425` → `10.0.401` (installed locally via winget); explicit
+   `System.Drawing.Common` references removed (NU1510 on .NET 10 — ships
+   in-box); restore + format + Release build clean (0 warnings), full suite
+   577 passed + 1 conditional skip, win-x64 self-contained publish verified
+   (245 files, 132.9 MB). All five packages already at latest stable, no
+   package changes required.
 9. Portable board-asset package (design + migration + tests).
 10. Structured digitizer error taxonomy (with UX copy sign-off).
 11. Native-speaker localization review per language.
