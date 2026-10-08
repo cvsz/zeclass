@@ -166,6 +166,11 @@
     per-thread allocated bytes after a CI-only flake (60 MB vs 32 MB budget
     under parallel xUnit collections); budget unchanged, failure mode
     (unbounded per-frame retention) still trips it.
+25. Release signing invocation: `& $array` is not invocable in PowerShell, so
+    signtool never executed in any dry run (the step failed before reaching
+    verification). Now resolves signtool via PATH then Windows Kits x64 with
+    fail-closed absence handling, and splats arguments correctly. Found by
+    reading the dry-run failure log after the `$rid:` parse fix.
 
 ## Deferred with rationale
 
