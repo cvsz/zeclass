@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using zEClass.Core;
 using Xunit;
 
@@ -161,5 +163,31 @@ public sealed class DocumentSessionTests : IDisposable
         Assert.False(session.IsDirty);
         Assert.Equal(0, session.CurrentRevision);
         Assert.Null(session.LastAutosaveUtc);
+    }
+
+    [Fact]
+    public async Task ConcurrentUse_StaysConsistent()
+    {
+        // Mutations arrive on the UI thread while autosave completions land on workers.
+        // Without synchronization, increments vanish and the watermark can jump.
+        var session = new DocumentSession();
+        const int threads = 8;
+        const int iterations = 500;
+        var tasks = Enumerable.Range(0, threads).Select(_ => Task.Run(() =>
+        {
+            for (var i = 0; i < iterations; i++)
+            {
+                session.NotifyModified();
+                var revision = session.CurrentRevision;
+                if (session.ShouldWriteAutosave(revision))
+                {
+                    session.NotifyAutosaved(revision, DateTime.UtcNow);
+                }
+            }
+        })).ToArray();
+        await Task.WhenAll(tasks);
+
+        Assert.Equal((long)threads * iterations, session.CurrentRevision);
+        Assert.True(session.AutosavedRevision <= session.CurrentRevision);
     }
 }
