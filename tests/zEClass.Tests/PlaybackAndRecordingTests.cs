@@ -331,26 +331,25 @@ public sealed class ScreenRecorderTests : IDisposable
         recorder.Start(path, 64, 48);
         var solid = new byte[64 * 3 * 48];
 
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        var before = GC.GetTotalMemory(true);
+        // Thread-allocated bytes, not process heap: xUnit runs collections in parallel,
+        // so GetTotalMemory measures other tests' garbage too and flakes under load
+        // (60 MB observed on CI vs a 32 MB budget). AddFrame runs synchronously here,
+        // so this thread's allocations are exactly the recorder's per-frame cost.
+        var before = GC.GetAllocatedBytesForCurrentThread();
 
         for (var i = 0; i < 300; i++)
         {
             Assert.True(recorder.AddFrame(solid));
         }
 
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
         Assert.Equal(300, recorder.FrameCount);
-        // The frames live on disk, not in memory: the file holds megabytes while the heap
-        // must not have grown anywhere near that.
+        // The frames live on disk, not in memory: the file holds megabytes while this
+        // thread allocated only small per-frame scratch.
         Assert.True(recorder.BufferedBytes > 2 * 1024 * 1024, $"{recorder.BufferedBytes}");
-
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        var after = GC.GetTotalMemory(true);
-
-        Assert.True(after - before < 32 * 1024 * 1024,
-            $"managed heap grew by {(after - before) / 1024 / 1024} MB over 300 frames");
+        Assert.True(allocated < 32 * 1024 * 1024,
+            $"thread allocated {allocated / 1024 / 1024} MB over 300 frames");
         recorder.Stop();
     }
 
