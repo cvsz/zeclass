@@ -290,7 +290,10 @@ public sealed class NdiBridgeTests
         var exe = Path.GetTempFileName();
         try
         {
-            File.WriteAllBytes(exe, [1, 2, 3, 4]);
+            // A real unsigned PE: the signature gate runs against actual files, so the
+            // fixture must be verifiable input (garbage bytes read back Invalid, which
+            // must refuse to start). The test assembly itself is an unsigned PE.
+            File.Copy(GetType().Assembly.Location, exe, overwrite: true);
             using var stream = File.OpenRead(exe);
             var pin = Convert.ToHexString(
                 System.Security.Cryptography.SHA256.HashData(stream));
