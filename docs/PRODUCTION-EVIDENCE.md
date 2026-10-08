@@ -156,6 +156,11 @@
     File-read collisions retry boundedly (3 × 100 ms) after a proven probe
     (exclusive lock surfaces as `CRYPT_E_FILE_ERROR`); attempt-coordination
     seam keeps the regression test deterministic without cross-test globals.
+23. Release dry-run signing gate: fixed `$rid:` parse error that failed every
+    dry run at the verification report line; dry runs tolerate `NotTrusted`
+    only for the exact CI-validation subject (`CN=zEClass self-signed CI
+    validation`), tag releases stay fail-closed. All workflow inline scripts
+    parse-verified with the PowerShell parser (would have caught this class).
 
 ## Deferred with rationale
 

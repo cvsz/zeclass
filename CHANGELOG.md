@@ -47,6 +47,7 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
 
 ### Fixed
 
+- Release dry-run signing gate: fixed PowerShell parse error (`$rid:` scoped-variable misparse) that failed every dry run at the verification report line; dry runs now tolerate `NotTrusted` only for the exact self-signed CI-validation subject, tag releases stay fail-closed. All 12 inline workflow scripts parse-verified locally
 - Release build: `LibraryImport` source generator now compiles (`AllowUnsafeBlocks`, explicit bool marshalling on `AreDpiAwarenessContextsEqual`)
 - Office import trust boundary: bounded ZIP extraction (`ZipLimits`), traversal/absolute/ADS entry rejection, content-sniffed media extensions, `IsSupported` no longer advertises legacy `.doc`/`.ppt`
 - Persistence: explicit dirty-state tracking (`DocumentSession` — `CurrentRevision`/`SavedRevision`/`AutosavedRevision`/`IsDirty`); Save-As commits path and name only after the write succeeds; autosave honors `AutoSaveEnabled`/interval, skips clean boards, drops stale snapshots, rotates 2 generations; New/Open/Close prompt on unsaved work; crash recovery offered when an autosave is newer than the save

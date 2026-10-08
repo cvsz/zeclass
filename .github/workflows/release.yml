@@ -133,10 +133,22 @@ jobs:
               if ($LASTEXITCODE -ne 0) { throw "signtool failed for $rid" }
               $sig = Get-AuthenticodeSignature $exe
               if ($sig.Status -ne 'Valid') {
-                Write-Error "Signing verification failed for $rid: $($sig.Status)"
-                exit 1
+                # Dry runs use the self-signed CI-validation certificate, which can
+                # never chain to a trusted root: tolerate NotTrusted for that exact
+                # subject on workflow_dispatch only. Tag releases stay fail-closed.
+                $dryRunTolerance = $env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and
+                  $sig.Status -eq 'NotTrusted' -and
+                  $null -ne $sig.SignerCertificate -and
+                  $sig.SignerCertificate.Subject -eq 'CN=zEClass self-signed CI validation'
+                if (-not $dryRunTolerance) {
+                  Write-Error "Signing verification failed for ${rid}: $($sig.Status)"
+                  exit 1
+                }
+                Write-Warning "Dry run: tolerating $($sig.Status) for CI-validation subject on $rid."
               }
-              Write-Host "$rid signed and verified: $($sig.Status)"
+              else {
+                Write-Host "$rid signed and verified: $($sig.Status)"
+              }
             }
           }
           finally {
