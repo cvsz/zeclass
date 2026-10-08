@@ -127,7 +127,7 @@ jobs:
           [IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
           try {
             foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
-              $exe = Join-Path 'publish' $rid 'zEClass.exe'
+              $exe = Join-Path (Join-Path 'publish' $rid) 'zEClass.exe'
               $signArgs = @(
                 'sign',
                 '/f', $pfxPath,
@@ -140,14 +140,18 @@ jobs:
               & $signtool @signArgs
               if ($LASTEXITCODE -ne 0) { throw "signtool failed for $rid" }
               $sig = Get-AuthenticodeSignature $exe
+              $signerSubject = if ($null -ne $sig.SignerCertificate) { $sig.SignerCertificate.Subject } else { '<none>' }
+              Write-Host "$rid signature: Status=$($sig.Status) Signer=$signerSubject Detail=$($sig.StatusMessage)"
               if ($sig.Status -ne 'Valid') {
                 # Dry runs use the self-signed CI-validation certificate, which can
-                # never chain to a trusted root: tolerate NotTrusted for that exact
-                # subject on workflow_dispatch only. Tag releases stay fail-closed.
+                # never chain to a trusted root. Empirically (local repro with the
+                # same cert shape + DigiCert timestamp, confirmed on CI) such a
+                # signature verifies as UnknownError with an untrusted-root message,
+                # not NotTrusted: tolerate either status, but only for that exact
+                # subject on workflow_dispatch. Tag releases stay fail-closed.
                 $dryRunTolerance = $env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and
-                  $sig.Status -eq 'NotTrusted' -and
-                  $null -ne $sig.SignerCertificate -and
-                  $sig.SignerCertificate.Subject -eq 'CN=zEClass self-signed CI validation'
+                  $sig.Status -in @('NotTrusted', 'UnknownError') -and
+                  $signerSubject -eq 'CN=zEClass self-signed CI validation'
                 if (-not $dryRunTolerance) {
                   Write-Error "Signing verification failed for ${rid}: $($sig.Status)"
                   exit 1
@@ -169,7 +173,7 @@ jobs:
         shell: pwsh
         run: |
           foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
-            $exe = Join-Path 'publish' $rid 'zEClass.exe'
+            $exe = Join-Path (Join-Path 'publish' $rid) 'zEClass.exe'
             $sig = Get-AuthenticodeSignature $exe
             Write-Host "$rid signature: $($sig.Status) $(if ($sig.SignerCertificate) { $sig.SignerCertificate.Subject })"
           }

@@ -171,6 +171,17 @@
     verification). Now resolves signtool via PATH then Windows Kits x64 with
     fail-closed absence handling, and splats arguments correctly. Found by
     reading the dry-run failure log after the `$rid:` parse fix.
+26. Release verification status enum: assuming self-signed implies `NotTrusted`
+    was wrong. Local repro (fresh `New-SelfSignedCertificate` code-signing
+    cert, same subject/RSA/SHA-256/2yr shape, real signtool from the
+    `Microsoft.Windows.SDK.BuildTools` NuGet package, DigiCert RFC 3161
+    timestamp) signs (exit 0) but verifies as `UnknownError` with message "A
+    certificate chain processed, but terminated in a root certificate which is
+    not trusted by the trust provider"; signer cert populated, EKU correct.
+    Same result on CI, so the gate now tolerates `NotTrusted`/`UnknownError`
+    for the exact CI-validation subject on `workflow_dispatch` only and logs
+    status/signer/detail every run. Repro cert and PFX deleted from this
+    machine after the experiment.
 
 ## Deferred with rationale
 
