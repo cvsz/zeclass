@@ -114,14 +114,22 @@ jobs:
         if: env.RELEASE_SIGNING_REQUIRED == 'true'
         shell: pwsh
         run: |
+          $signtool = (Get-Command signtool -ErrorAction SilentlyContinue | ForEach-Object { $_.Source } | Select-Object -First 1)
+          if ([string]::IsNullOrWhiteSpace($signtool)) {
+            $kits = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
+            $signtool = Get-ChildItem $kits -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -match '\\x64\\' } |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if ([string]::IsNullOrWhiteSpace($signtool)) { throw 'signtool not found: Windows SDK missing on runner' }
           $pfxBytes = [Convert]::FromBase64String($env:SIGN_PFX_BASE64)
           $pfxPath = Join-Path $env:RUNNER_TEMP 'sign.pfx'
           [IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
           try {
             foreach ($rid in 'win-x64', 'win-arm64', 'win-x86') {
               $exe = Join-Path 'publish' $rid 'zEClass.exe'
-              $signCmd = @(
-                'signtool', 'sign',
+              $signArgs = @(
+                'sign',
                 '/f', $pfxPath,
                 '/p', $env:SIGN_PFX_PASSWORD,
                 '/tr', 'http://timestamp.digicert.com',
@@ -129,7 +137,7 @@ jobs:
                 '/fd', 'sha256',
                 $exe
               )
-              & $signCmd
+              & $signtool @signArgs
               if ($LASTEXITCODE -ne 0) { throw "signtool failed for $rid" }
               $sig = Get-AuthenticodeSignature $exe
               if ($sig.Status -ne 'Valid') {
