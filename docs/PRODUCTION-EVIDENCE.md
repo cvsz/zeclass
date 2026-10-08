@@ -150,6 +150,12 @@
     lock-guarded (UI-thread mutations vs worker-thread completions could tear
     64-bit revisions on x86 and lose increments). Concurrency regression test
     hammers 8 threads x 500 iterations and asserts exact convergence.
+22. NDI helper signer verification: `Authenticode` verifier via wintrust
+    (`Valid`/`NotSigned`/`Invalid` per Microsoft's PE example, catalog gap
+    documented); present-but-invalid refuses launch even with no hash pin.
+    File-read collisions retry boundedly (3 × 100 ms) after a proven probe
+    (exclusive lock surfaces as `CRYPT_E_FILE_ERROR`); attempt-coordination
+    seam keeps the regression test deterministic without cross-test globals.
 
 ## Deferred with rationale
 

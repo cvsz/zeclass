@@ -157,6 +157,29 @@ public sealed class NdiBridge : IDisposable
             return NdiResult.Failed;
         }
 
+        // Signer verification layers on top of the hash pin without replacing it: a
+        // present-but-invalid signature refuses the launch even when no pin is
+        // configured, while an absent signature keeps the existing unsigned behavior.
+        // The gate only runs against files that really exist: test doubles report
+        // presence through the injectable probe, and a file that vanishes between the
+        // probe and the launch still fails safely at Process.Start.
+        if (File.Exists(canonical))
+        {
+            var signature = Authenticode.Verify(canonical);
+            if (signature == SignatureState.Invalid)
+            {
+                LastError = "NDI helper signature is present but invalid; refusing to start it.";
+                CrashLog.Info($"NdiBridge: {LastError} ({canonical})");
+                return NdiResult.Failed;
+            }
+
+            if (signature == SignatureState.Valid)
+            {
+                CrashLog.Info($"NdiBridge: helper signature valid " +
+                              $"({Authenticode.PublisherOf(canonical) ?? "unknown signer"}).");
+            }
+        }
+
         if (IsRunning)
         {
             return NdiResult.AlreadyRunning;

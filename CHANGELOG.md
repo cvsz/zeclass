@@ -71,5 +71,6 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
 - Export state safety: `WritePdf` restores the active page in a `finally` (a render throw mid-loop no longer strands the board on the wrong page), and PDF export refuses beyond `MaxExportPages` (100) before rendering anything, surfacing through the existing export failure dialog
 - Page-index hot paths: `EnsurePages` returns consistent documents untouched (linear check instead of re-sort/rebuild on every `Active()` call); export page selection builds one index map instead of scanning per index
 - Autosave revision counters are now lock-guarded: UI-thread mutations and worker-thread completions can no longer tear or lose 64-bit revisions on x86
+- NDI trust: signer verification layers on the hash pin without replacing it — a present-but-invalid Authenticode signature refuses the launch even with no pin configured (new `Authenticode` verifier via wintrust, `Valid`/`NotSigned`/`Invalid` mapping per Microsoft's own PE example); absent signatures keep the existing unsigned behavior. Transient file-read collisions (antivirus scan on close, proven by probe to surface as `CRYPT_E_FILE_ERROR`) retry boundedly (3 × 100 ms) instead of hardening into a false Invalid
 
 ### Security
