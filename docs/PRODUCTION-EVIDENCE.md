@@ -150,6 +150,7 @@
     lock-guarded (UI-thread mutations vs worker-thread completions could tear
     64-bit revisions on x86 and lose increments). Concurrency regression test
     hammers 8 threads x 500 iterations and asserts exact convergence.
+22b. Recorder memory-test isolation: process-heap measurement replaced with per-thread allocated bytes after a CI-only flake (60 MB vs 32 MB budget under parallel load); budget unchanged, failure mode preserved.
 22. NDI helper signer verification: `Authenticode` verifier via wintrust
     (`Valid`/`NotSigned`/`Invalid` per Microsoft's PE example, catalog gap
     documented); present-but-invalid refuses launch even with no hash pin.
@@ -161,6 +162,10 @@
     only for the exact CI-validation subject (`CN=zEClass self-signed CI
     validation`), tag releases stay fail-closed. All workflow inline scripts
     parse-verified with the PowerShell parser (would have caught this class).
+24. Recorder memory-test isolation: process-heap measurement replaced with
+    per-thread allocated bytes after a CI-only flake (60 MB vs 32 MB budget
+    under parallel xUnit collections); budget unchanged, failure mode
+    (unbounded per-frame retention) still trips it.
 
 ## Deferred with rationale
 
