@@ -33,6 +33,12 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
 
 ### Changed
 
+- .NET 8 → .NET 10 LTS migration (`net8.0-windows` → `net10.0-windows`,
+  SDK pinned `8.0.425` → `10.0.401`): explicit `System.Drawing.Common`
+  references removed (NU1510 — ships in the WindowsDesktop shared framework
+  on .NET 10), locally rebuilt and fully retested (577 passed + 1 documented
+  conditional skip, format clean), win-x64 self-contained publish verified
+  (245 files, 132.9 MB)
 - Dependency updates (locally rebuilt and fully retested: 569 fast + 6 soak
   green, 1 documented conditional skip, format clean): Microsoft.NET.Test.Sdk
   17.11.1 → 18.10.1, xunit 2.9.2 → 2.9.3, xunit.runner.visualstudio 2.8.2 →

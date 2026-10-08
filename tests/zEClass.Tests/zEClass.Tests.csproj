@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -18,8 +18,8 @@
     <!-- Lets a test skip at runtime. xunit v2 has no Assert.Skip, and silently returning would
          make an unexercised importer look like a passing one. -->
     <PackageReference Include="Xunit.SkippableFact" Version="1.5.85" />
-    <!-- For the window-icon frame-selection tests. Same as the app: managed-only on Windows. -->
-    <PackageReference Include="System.Drawing.Common" Version="10.0.12" />
+    <!-- System.Drawing.Common ships in the WindowsDesktop shared framework on .NET 10
+         (explicit reference triggers NU1510); kept reference-free deliberately. -->
   </ItemGroup>
 
   <ItemGroup>
