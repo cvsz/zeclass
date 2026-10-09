@@ -194,6 +194,17 @@
     for the exact CI-validation subject on `workflow_dispatch` only and logs
     status/signer/detail every run. Repro cert and PFX deleted from this
     machine after the experiment.
+27. Supply-chain pin refresh (2026-10-09): `upload-artifact` v7.0.1 → v7.0.2
+    and `codeql-action` v4.38.2 → v4.38.3 after their floating tags moved;
+    new SHAs resolved via the GitHub API and commit-verified before pinning.
+    Verified unchanged and left alone: `checkout@v7`, `setup-dotnet@v6`,
+    `dependency-review-action@v5.0.0` (pins identical to live tags), SDK
+    10.0.401 (= upstream `latest-sdk`), NuGet (no outdated/vulnerable/
+    deprecated), CycloneDX 6.2.0 and PSScriptAnalyzer 1.25.0 (latest
+    upstream). Deleted two superseded Sep-26 template-experiment branches
+    (`chore/complete-repository-template` `be567a2`,
+    `feat/full-repository-template` `8ee142ba`; single root commits, selected
+    content long since merged, objects retained locally for recovery).
 
 ## Deferred with rationale
 

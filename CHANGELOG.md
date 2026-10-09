@@ -33,6 +33,18 @@ The format is based on Keep a Changelog and projects are encouraged to follow Se
 
 ### Changed
 
+- GitHub Actions pins refreshed to current upstream releases (each new SHA
+  resolved via the API and commit-verified): `actions/upload-artifact`
+  v7.0.1 → v7.0.2 (`043fb46d` → `cf430e03`, "prepare v7.0.2 release"),
+  `github/codeql-action` v4.38.2 → v4.38.3 (`2892aa5e` → `24c54180`);
+  `checkout@v7`, `setup-dotnet@v6`, and `dependency-review-action@v5.0.0`
+  pins verified byte-identical to their live tags (no change). Also
+  confirmed current, no action taken: .NET SDK `10.0.401` is upstream
+  `latest-sdk`, NuGet reports no outdated/vulnerable/deprecated packages,
+  CycloneDX 6.2.0 and PSScriptAnalyzer 1.25.0 are the latest upstream
+  releases, and the single `SYSLIB0057` pragma stays (documented:
+  `X509CertificateLoader` has no signed-file loader)
+
 - .NET 8 → .NET 10 LTS migration (`net8.0-windows` → `net10.0-windows`,
   SDK pinned `8.0.425` → `10.0.401`): explicit `System.Drawing.Common`
   references removed (NU1510 — ships in the WindowsDesktop shared framework
