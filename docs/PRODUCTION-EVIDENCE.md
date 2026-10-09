@@ -1,6 +1,7 @@
 # Production evidence (this pass)
 
-- Date: 2026-09-28/29 UTC. SDK: 8.0.425 (user-local install). OS: Windows 10.
+- Date: 2026-09-28/29 UTC (original pass; continued 2026-10-08/09). SDK: 8.0.425
+  at the time, 10.0.401 after the .NET 10 migration (PR #11). OS: Windows 10.
 - Git: available this pass (MinGit at `%LOCALAPPDATA%\MinGit\cmd`, not on the
   default PATH). History on `origin/main`
   (https://github.com/cvsz/zeclass):
@@ -11,7 +12,12 @@
   `86a6924`/`91e76be`/`3276f04` docs evidence passes → `baac507` release
   dry-run trigger → `eb27bae` §12 fixture matrix + §25 import budget →
   `1c14708` live touch-hardware detection docs → `1989ee0` GPG-signed
-  commit. All pushed; `HEAD == origin/main`.
+  commit → `c993766`/`ad7c39c` governance evidence + dependency updates →
+  `6953606` export safety → `4d0309a` autosave locking → `ff95e97` .NET 10
+  migration → `742d4d6` NDI signature gate → `32e2074` recorder-test
+  isolation → `19cf3a3`/`dd160ef`/`2556db2` release-signing fixes →
+  `93a9800` dry-run evidence (`cb04b19` merge). All pushed;
+  `HEAD == origin/main == cb04b19`.
   Commit signing restored 2026-09-30 (slice 18): per-user GnuPG 2.5.24
   (installer SHA-256 verified against the winget manifest), new ed25519
   sign-only key `B9CD55DF50A6AB7B08C783ABAA759FAAD97197D5`
@@ -27,23 +33,29 @@
 - Baseline before changes: `dotnet build -c Release` FAILED (9 errors:
   SYSLIB1062 missing `AllowUnsafeBlocks`, SYSLIB1051 un-marshalled bool,
   CS0227). README claims of a green build did not reproduce here.
-- After changes: build 0 warnings/0 errors; **575 tests total (574 passed + 1
-  conditional skip)**; fast suite `Category!=Soak` = 568 passed + 1 skip;
-  soak 6/6; format clean; vulnerability audit clean; both `install.ps1` and
+- After changes: build 0 warnings/0 errors; **584 tests total (583 passed + 1
+  conditional skip)** — fast suite `Category!=Soak` = 577 passed + 1 skip,
+  soak 6/6 (re-verified 2026-10-09, Release, net10.0); format clean; vulnerability audit clean; both `install.ps1` and
   `uninstall.ps1` parse and run under Windows PowerShell 5.1.
 - CI evidence (GitHub Actions, API-verified): `CI` workflow run **success** on
   `fd392a0` … `baac507`, `eb27bae`, `1c14708`, `1989ee0` (restore, format,
   build, unit+integration, soak, dependency audit, workflow hygiene,
   PSScriptAnalyzer, per-RID publish, checksums, SBOM, repository-baseline);
-  `91e76be`'s CI run was *cancelled* by `cancel-in-progress` when the next
-  push superseded it (its CodeQL run succeeded — not a failure). `CodeQL`
-  workflow **success** on every push through `1989ee0`. Neither `release.yml`
-  path (tag push or `workflow_dispatch`) has run and no tags exist. GitHub
+   `91e76be`'s CI run was *cancelled* by `cancel-in-progress` when the next
+   push superseded it (its CodeQL run succeeded — not a failure). `CodeQL`
+   workflow **success** on every push through `cb04b19` (additionally
+   API-verified: `37787802635`, `37791142602`, `37795165475`,
+   `37798687365`; full CI runs `37787800329`, `37791142622`,
+   `37795163186`, `37798687306`). `release.yml` `workflow_dispatch` ran four
+   times: three red debug cycles (see slices 23–26) then green
+   `37795170253` on `8c40e29` — full pipeline proven; the tag path has not
+   run and no tags exist. GitHub
   Security pages were not browsed from here — dependency-review runs only on
   PRs; the PR carrying this document change is the first PR under the new
   ruleset, so its result is recorded after merge. GitHub state: authenticated
-  `gh` as `cvsz` (admin; scopes `repo, gist, read:org, admin:gpg_key`);
-  0 open issues, 0 releases/tags, 5 closed template-era Dependabot PRs;
+   `gh` as `cvsz` (admin; scopes `repo, gist, read:org, admin:gpg_key`);
+   0 open issues, 0 releases/tags (re-verified 2026-10-09), 5 closed
+   template-era Dependabot PRs plus merged PRs #7–#17 under the ruleset;
   branch ruleset `protect-main` active (slice 19).
 - Live-hardware API evidence (this machine, re-run 2026-09-30): SetupAPI probe
   12/12 HID vs independent recount; the live `DigitizerService` probe reports
