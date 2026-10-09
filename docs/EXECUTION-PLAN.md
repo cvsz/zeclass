@@ -1,6 +1,6 @@
 # Execution plan (remaining)
 
-Status: 19 slices implemented and locally verified (see
+Status: 26 slices implemented and locally verified (see
 `PRODUCTION-EVIDENCE.md`), via authenticated `gh` as `cvsz` (admin on the
 repo). Git history on `origin/main`:
 `fd392a0` initial import → `db344d3` digitizer classification →
@@ -11,8 +11,13 @@ fix + installer E2E → `d7c3bee` accessibility name contract →
 `52e9ef7` uninstaller + E2E → `86a6924`/`91e76be`/`3276f04` docs passes →
 `baac507` release dry-run trigger → `eb27bae` §12 fixture matrix + §25
 import budget → `1c14708` live touch-hardware detection docs →
-`1989ee0` GPG-signed commit. CI + CodeQL green on every push through
-`1989ee0` (API-verified).
+`1989ee0` GPG-signed commit → `c993766`/`ad7c39c` governance + dependency
+updates → `6953606` export safety → `4d0309a` autosave locking → `ff95e97`
+.NET 10 migration → `742d4d6` NDI signature gate → `32e2074`
+recorder-test isolation → `19cf3a3`/`dd160ef`/`2556db2` release-signing
+fixes → `93a9800` dry-run evidence (`cb04b19` merge). CI + CodeQL green on
+every push through `cb04b19` (API-verified; required checks green on every
+merge #7–#17 by ruleset enforcement).
 
 ## Immediate (operator with git + GitHub)
 
@@ -26,12 +31,15 @@ import budget → `1c14708` live touch-hardware detection docs →
    Limitations/Rollback).
 3. Watch CI: build, format, tests, soak, audit, hygiene, PSScriptAnalyzer,
    per-RID publish, SBOM. Fix forward, never weaken gates.
-4. Exercise the release pipeline: run `release.yml` via **workflow_dispatch**
+4. ~~Exercise the release pipeline: run `release.yml` via **workflow_dispatch**
    (safe dry run — builds, tests, signing gate, manifest; never publishes, no
-   tag needed). Signing secrets + `RELEASE_SIGNING_REQUIRED=true` are now
-   configured with a self-signed CI-validation certificate; the dry run still
-   needs to be triggered. The real tag `v1.0.0` stays an operator step
-   afterwards, gated on hardware + production-certificate evidence.
+   tag needed)~~ done 2026-10-08: dry run `37795170253` green end to end on
+   `8c40e29` after three debug cycles (PSParser `${rid}:`, `& $array`
+   invocation, `UnknownError`-vs-`NotTrusted` tolerance — see
+   `PRODUCTION-EVIDENCE.md` 23–26). Signing secrets +
+   `RELEASE_SIGNING_REQUIRED=true` hold the self-signed CI-validation
+   certificate. The real tag `v1.0.0` stays an operator step afterwards,
+   gated on hardware + production-certificate evidence.
 
 ## Next verification (panel machine)
 

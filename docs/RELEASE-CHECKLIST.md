@@ -17,14 +17,17 @@ Block the release while any box is unchecked.
 
 ## Build
 
-- [x] SDK pinned (`global.json` 8.0.425)
+- [x] SDK pinned (`global.json` 10.0.401)
 - [x] warnings = errors (csproj + green build)
 - [x] deterministic build (`Deterministic=true`)
 - [x] Release build re-run after final doc edits this pass: build 0 warnings
-      /0 errors, 575 tests (574 + 1 conditional skip), format clean,
+      /0 errors, 584 tests (583 + 1 conditional skip: fast subset 577 + 1,
+      soak 6/6, Release, re-verified 2026-10-09), format clean,
       audit clean. Docs-only commits followed; re-run once more before any tag
-- [x] x64 verified — CI publish green on every push through `d7c3bee`, plus
-      local publish and repeated app execution (installer E2E ran the binary)
+- [x] x64 verified — CI publish green on every push through `cb04b19`, plus
+      local publish and repeated app execution (installer E2E ran the binary);
+      release dry run `37795170253` packaged all three RIDs with checksums,
+      manifest, and SBOM
 - [ ] ARM64 verified — CI publish green (build/package only); not executed on
       ARM64 hardware
 - [ ] x86 verified or removed — CI publish green (build/package only); not
@@ -43,7 +46,9 @@ Block the release while any box is unchecked.
 ## Security
 
 - [x] CodeQL green (CI) — workflow success on `db344d3`, `02c691a`,
-      `c86f9ed`, `d7c3bee` (API-verified); no findings surfaced
+      `c86f9ed`, `d7c3bee` (API-verified), plus `2355303` (`37787802635`),
+      `a9fa2a6` (`37791142602`), `8c40e29` (`37795165475`), `cb04b19`
+      (`37798687365`); no findings surfaced
 - [x] dependency scan clean (local NuGet audit)
 - [ ] secret scan (GitHub Security pages not browsed from here; CI
       repository-baseline secret-*file-name* check passes)
@@ -60,8 +65,10 @@ Block the release while any box is unchecked.
       recovery), autosave + recovery, atomic replacement
 - [x] installer rollback, hash/PE verification; uninstaller scoped removal
 - [x] recording limits, import cleanup
-- [ ] Authenticode signing + timestamp + chain verification (release job;
-      needs secrets)
+- [ ] Authenticode signing with a production certificate (release job dry run
+      `37795170253` green end to end with the self-signed CI-validation cert:
+      sign → DigiCert timestamp → verify → scoped tolerate; `Status=Valid`
+      still needs a production cert)
 - [x] SHA-256 + SBOM + `release-manifest.json` (workflow)
 - [x] changelog updated; roadmap updated (`docs/ROADMAP.md`, README counts)
 - [x] production evidence for CI-only rows — CI/CodeQL success recorded in
