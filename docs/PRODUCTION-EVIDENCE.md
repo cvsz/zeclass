@@ -55,7 +55,7 @@
   ruleset, so its result is recorded after merge. GitHub state: authenticated
    `gh` as `cvsz` (admin; scopes `repo, gist, read:org, admin:gpg_key`);
    0 open issues, 0 releases/tags (re-verified 2026-10-09), 5 closed
-   template-era Dependabot PRs plus merged PRs #7–#17 under the ruleset;
+   template-era Dependabot PRs plus merged PRs #7–#19 under the ruleset;
   branch ruleset `protect-main` active (slice 19).
 - Live-hardware API evidence (this machine, re-run 2026-09-30): SetupAPI probe
   12/12 HID vs independent recount; the live `DigitizerService` probe reports
@@ -205,6 +205,20 @@
     (`chore/complete-repository-template` `be567a2`,
     `feat/full-repository-template` `8ee142ba`; single root commits, selected
     content long since merged, objects retained locally for recovery).
+28. Local E2E + smoke + alerts sweep (2026-10-09, latest `main`): installer
+    matrix re-run in an isolated TEMP dir via the documented Bypass form —
+    10/10 install assertions (exits 0/3/0/4, shortcuts created, backup
+    retained, corrupt-source rollback proven by hash equality) and 13/13
+    uninstall assertions (exits 0/3, running instance stopped, backup moved
+    aside, purge gated on the flag with profile snapshot/restore); zero
+    residue (no processes, shortcuts, or TEMP left). Publish + launch smoke:
+    win-x64/x86 start, respond, and close cleanly (x86 under WoW64); all
+    three RIDs PE-verified (`8664`/`14C`/`AA64`). Security API sweep: 0 open
+    Dependabot/code/secret-scanning alerts, secret scanning + push
+    protection enabled, Dependabot scans green with nothing to update.
+    Second release dry run `38242249349` green on `d9da0cf` (re-proof after
+    the pin refresh). Hygiene: merged local branch deleted, `git gc`, 472 MB
+    stale `publish\` removed (canonical output is `artifacts\`).
 
 ## Deferred with rationale
 

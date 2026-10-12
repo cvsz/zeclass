@@ -38,7 +38,9 @@ Block the release while any box is unchecked.
 - [x] unit / integration / adversarial / soak / persistence / importer /
       recorder / native interop (local evidence)
 - [ ] installer end-to-end on target machine — **local E2E done** (4-case
-      install matrix + 6-case uninstall matrix, PS 5.1, this machine);
+      install matrix + 6-case uninstall matrix, PS 5.1, this machine;
+      re-verified 2026-10-09 on current artifacts: 10/10 install + 13/13
+      uninstall assertions, profile snapshot/restore, zero residue);
       target-panel run still pending
 - [ ] hardware touch/pen matrix on panel machine
 - [ ] accessibility + localization human passes
@@ -50,8 +52,9 @@ Block the release while any box is unchecked.
       `a9fa2a6` (`37791142602`), `8c40e29` (`37795165475`), `cb04b19`
       (`37798687365`); no findings surfaced
 - [x] dependency scan clean (local NuGet audit)
-- [ ] secret scan (GitHub Security pages not browsed from here; CI
-      repository-baseline secret-*file-name* check passes)
+- [x] secret scan (API 2026-10-09: secret scanning + push protection enabled,
+      0 open secret-scanning alerts; 0 open code-scanning alerts with CodeQL
+      green; CI repository-baseline secret-*file-name* check passes)
 - [x] PowerShell parse check (`install.ps1` + `uninstall.ps1`); PSScriptAnalyzer
       green in CI
 - [x] workflow hardening (SHA-pinned actions, least privilege; hygiene job)
@@ -65,8 +68,8 @@ Block the release while any box is unchecked.
       recovery), autosave + recovery, atomic replacement
 - [x] installer rollback, hash/PE verification; uninstaller scoped removal
 - [x] recording limits, import cleanup
-- [ ] Authenticode signing with a production certificate (release job dry run
-      `37795170253` green end to end with the self-signed CI-validation cert:
+- [ ] Authenticode signing with a production certificate (release job dry runs
+      `37795170253`, `38242249349` green end to end with the self-signed CI-validation cert:
       sign → DigiCert timestamp → verify → scoped tolerate; `Status=Valid`
       still needs a production cert)
 - [x] SHA-256 + SBOM + `release-manifest.json` (workflow)
