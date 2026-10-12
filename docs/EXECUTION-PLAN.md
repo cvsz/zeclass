@@ -17,7 +17,7 @@ updates → `6953606` export safety → `4d0309a` autosave locking → `ff95e97`
 recorder-test isolation → `19cf3a3`/`dd160ef`/`2556db2` release-signing
 fixes → `93a9800` dry-run evidence (`cb04b19` merge). CI + CodeQL green on
 every push through `cb04b19` (API-verified; required checks green on every
-merge #7–#17 by ruleset enforcement).
+merge #7–#19 by ruleset enforcement).
 
 ## Immediate (operator with git + GitHub)
 

@@ -80,8 +80,8 @@ Calculator, ruler, compass, set square, protractor, table sheet: all done.
 |---|---|
 | Self-contained publish, x64 / ARM64 / x86 | done, script plus per-runtime checksums |
 | Per-user installer with a digitizer precheck | done, no elevation required |
-| Code signing | pipeline proven: release dry run `37795170253` green end to end with the self-signed CI-validation certificate (sign → DigiCert timestamp → verify → scoped tolerate); secrets `SIGN_PFX_BASE64`/`SIGN_PFX_PASSWORD` + `RELEASE_SIGNING_REQUIRED=true` configured; chain deliberately untrusted — a production certificate is still required before `v1.0.0` |
-| Signed commits (GPG) | done: ed25519 key `B9CD55DF…` on the account, `commit.gpgsign=true`, commit `1989ee0` verified by GitHub (`reason=valid`); all 23 commits since the signing policy are signed (author GPG or GitHub merge signature; HEAD `cb04b19`: `verified=true`, `reason=valid`); the 12 pre-policy commits stay unsigned, no rewrite |
+| Code signing | pipeline proven: release dry runs `37795170253` and `38242249349` green end to end with the self-signed CI-validation certificate (sign → DigiCert timestamp → verify → scoped tolerate); secrets `SIGN_PFX_BASE64`/`SIGN_PFX_PASSWORD` + `RELEASE_SIGNING_REQUIRED=true` configured; chain deliberately untrusted — a production certificate is still required before `v1.0.0` |
+| Signed commits (GPG) | done: ed25519 key `B9CD55DF…` on the account, `commit.gpgsign=true`, commit `1989ee0` verified by GitHub (`reason=valid`); all 27 commits since the signing policy are signed (author GPG or GitHub merge signature; HEAD `d9da0cf`: `verified=true`, `reason=valid`); the 12 pre-policy commits stay unsigned, no rewrite |
 | Rotating crash log (2 MB, 3 generations) | done, with exception-chain flattening |
 | Diagnostics export for support | done |
 | Windows 11 manifest, PerMonitorV2 DPI | done |
