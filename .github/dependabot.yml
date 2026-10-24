@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action/*"
 
   # The application and its tests are .NET packages restored through the solution.
   - package-ecosystem: nuget
